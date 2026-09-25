@@ -1,0 +1,18 @@
+---
+description: Airwallex webhook route and handler requirements (signature, idempotency, ordering)
+globs: src/app/api/webhooks/**,src/services/webhookHandlers.ts,src/lib/airwallex/webhooks.ts
+alwaysApply: false
+---
+
+# Webhooks
+
+Full spec: `docs/07-webhooks.md`.
+
+- Route runs on the Node runtime: `export const runtime = 'nodejs'`.
+- Read the body with `await req.text()` and verify **before** parsing: HMAC-SHA256 hex of `x-timestamp + rawBody` using `AIRWALLEX_WEBHOOK_SECRET`, `crypto.timingSafeEqual`, and a 5-minute timestamp tolerance.
+- Store every event in `webhook_events` (unique `eventId`). Duplicate → return 200 without reprocessing.
+- Return 200 once stored, even if processing fails. Record `processingError` so sync/retry can fix state.
+- Normalize payloads in one place: `data.object ?? data`, `account_id ?? accountId`.
+- Handlers must be idempotent, monotonic (status rank), and tolerant of out-of-order delivery.
+- Look up objects by our stored IDs first, then fall back to `metadata.offerId` / `metadata.milestoneId`.
+- Webhook handlers and `POST /api/offers/[id]/sync` must share the same transition functions. Never duplicate logic.

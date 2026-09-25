@@ -1,0 +1,36 @@
+---
+description: Escrow state machines, fee math, and safe state transitions for offers and milestones
+globs: src/services/**,src/models/**,src/lib/money.ts
+alwaysApply: false
+---
+
+# Escrow State and Money
+
+State machines are defined in `docs/04-data-model.md`. Implement them exactly; update the doc first if they need to change.
+
+## Transitions
+- Every transition is a **conditional update** on the expected current status:
+```ts
+const res = await Offer.updateOne(
+  { _id: offerId, milestones: { $elemMatch: { _id: mId, status: 'SUBMITTED' } } },
+  { $set: { 'milestones.$.status': 'RELEASING', 'milestones.$.approvedAt': new Date() } },
+);
+if (res.modifiedCount === 0) throw new InvalidStateError('milestone not SUBMITTED');
+```
+- Claim the transition **before** calling Airwallex, then record the returned IDs/statuses.
+- Webhook-driven updates are **monotonic**: use a status rank map and never move backwards.
+- A milestone is `PAID` only when both its seller and revenue legs are settled.
+- Role guards: only the buyer approves, requests changes, or pays; only the seller submits deliveries.
+
+## Fees (`src/services/fees.ts`, pure + unit-tested)
+```ts
+fee     = roundHalfUp(M * platformFeePercent / 100)
+reserve = roundHalfUp(M * processingReservePercent / 100)
+seller  = M - fee; revenue = fee - reserve   // seller + revenue + reserve === M
+```
+- Snapshot `feeSnapshot` and per-milestone `breakdown` when the offer is sent; never recompute later.
+- Validation: milestone ≥ $10.00, 1–10 milestones, offer total ≤ $9,000 (sandbox limit).
+
+## Money types
+- Store `amountMinor: number` (integer) + `currency`. No floats in the DB or in fee math.
+- Format for UI with `Intl.NumberFormat` via the `Money` component.

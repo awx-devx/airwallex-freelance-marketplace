@@ -1,0 +1,27 @@
+---
+description: Core project context, stack, and non-negotiable invariants for the Airwallex freelance escrow demo
+alwaysApply: true
+---
+
+# Project Core
+
+Demo freelance marketplace on a single Airwallex **sandbox** platform account. The seller sends a milestone offer, the buyer pays up front, each milestone's funds are held and then released on buyer approval. Every user has an Airwallex connected account (CA).
+
+## Source of truth
+- Design lives in `docs/`. Read `docs/README.md` first, then the doc relevant to the task (`03-airwallex-integration.md` for money, `04-data-model.md` for schemas/state machines).
+- If code and docs disagree, stop and flag it. If a change alters behaviour described in `docs/`, update the doc **in the same commit**.
+- Unverified Airwallex behaviour is tracked in `docs/13-open-questions-and-risks.md` (R1–R14). When the spike resolves one, update that file.
+
+## Stack
+Next.js App Router + TypeScript, MongoDB via Mongoose, Tailwind, zod, `jose` sessions, `@airwallex/components-sdk`. **No Redis** unless a doc change justifies it.
+
+## Invariants (never break)
+- Airwallex API calls happen **server-side only**. Never expose `AIRWALLEX_API_KEY` or call Airwallex from client components.
+- Amounts: integer **minor units** internally (`amountMinor`); convert to Airwallex decimal major units only in `src/lib/money.ts`. Never send cents to Airwallex.
+- Charge amounts are derived from stored offer data, never from client input.
+- Money state changes only via `src/services/*` using conditional (status-guarded) updates.
+- Checkout `success` in the browser is provisional; confirm via webhook or PaymentIntent retrieve.
+- Use deterministic `request_id`s from `src/lib/airwallex/requestIds.ts`.
+
+## Layering
+`app/` (pages, server actions, route handlers: auth + validate + call service) → `services/` (business rules) → `lib/airwallex`, `models/`. Keep route handlers and actions thin.

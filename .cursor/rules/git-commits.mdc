@@ -1,0 +1,42 @@
+---
+description: Commit frequently using Conventional Commits 1.0.0 so history is easy to track and revert
+alwaysApply: true
+---
+
+# Commits (Conventional Commits 1.0.0)
+
+Spec: https://www.conventionalcommits.org/en/v1.0.0/
+
+## When to commit
+- Commit after **each logical, working unit** (a model, a service function plus its tests, a page, a doc update). Don't batch unrelated changes.
+- Each commit should build/typecheck on its own so `git revert <sha>` is safe.
+- Separate refactors and formatting from behaviour changes.
+- Commit docs changes together with the code they describe.
+- Never commit secrets (`.env*` except `.env.example`), `node_modules`, `.next`, or `scripts/spike/out/`.
+- Don't push, amend pushed commits, or force-push unless the user asks.
+
+## Format
+```
+<type>(<scope>): <imperative summary, lowercase, no period, ≤72 chars>
+
+<optional body: what and why, wrapped at 72>
+
+<optional footers: Refs: R3, BREAKING CHANGE: ...>
+```
+
+Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`, `style`, `revert`.
+Breaking changes: `feat(escrow)!: ...` and/or a `BREAKING CHANGE:` footer.
+
+Scopes: `auth`, `airwallex`, `provisioning`, `offers`, `funding`, `escrow`, `fees`, `webhooks`, `wallet`, `platform`, `db`, `seed`, `spike`, `ui`, `config`, `deps`, `docs`, `rules`.
+
+## Examples
+```
+feat(escrow): create held funds splits on payment success
+fix(webhooks): verify signature against raw request body
+test(fees): cover rounding for 3-way milestone breakdown
+docs(risks): record R3 findings from held-split spike
+chore(deps): add @airwallex/components-sdk
+revert: feat(escrow): create held funds splits on payment success
+
+Refs: 1a2b3c4
+```

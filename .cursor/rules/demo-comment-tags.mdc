@@ -1,0 +1,33 @@
+---
+description: Tag every demo-only shortcut, sandbox dependency, and Airwallex quirk with grep-able comments
+globs: src/**,scripts/**
+alwaysApply: false
+---
+
+# Demo Comment Tags
+
+This codebase is a base for others (humans and LLMs). Shortcuts must be tagged **where they live**.
+
+| Tag | Use for |
+| --- | --- |
+| `DEMO-ONLY:` | Unsafe or incorrect in production. Must be followed by `PROD:`. |
+| `PROD:` | What production should do instead (or a missing production concern). |
+| `SANDBOX:` | Depends on sandbox-only Airwallex features (simulation endpoints, test cards, pre-funded wallet). |
+| `AIRWALLEX:` | Non-obvious API behaviour/constraint the code relies on, with a docs link when possible. |
+
+```ts
+// DEMO-ONLY: Guests share seed accounts, so concurrent visitors see each other's actions.
+// PROD: No shared accounts; per-user sessions only.
+const user = await pickRandomGuestPoolUser();
+
+// SANDBOX: force-activates the connected account, skipping KYC review.
+await awx.simulation.forceAccountStatus(accountId, 'ACTIVE');
+
+// AIRWALLEX: splits must be created after PI success and before settlement (sandbox is T+0).
+// https://www.airwallex.com/docs/api/payments/funds_splits/create.md
+```
+
+Rules:
+- Short and specific: what, and what instead. No decision history, and no comments narrating obvious code.
+- Adding a new `DEMO-ONLY:` means adding a row to the inventory in `docs/10-demo-vs-production.md` in the same commit.
+- Audit: `rg -n "DEMO-ONLY:|SANDBOX:" src scripts`.

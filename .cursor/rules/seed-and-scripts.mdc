@@ -1,0 +1,17 @@
+---
+description: Seed, reset, and spike script conventions
+globs: scripts/**
+alwaysApply: false
+---
+
+# Scripts (seed, reset, spike)
+
+Spec: `docs/08-seeding.md`, `docs/12-implementation-plan.md` (Phase 0).
+
+- Scripts reuse `src/lib/*` and `src/services/*`. Never duplicate Airwallex or escrow logic in scripts.
+- **Seed is idempotent**: upsert users by email, reuse existing `acct_...` IDs, skip offers whose `seedKey` exists, and use deterministic `request_id`s (for example `seedtopup:{userId}:{seedVersion}`).
+- Seeded active contracts use the **wallet rail** (card payments need a browser).
+- `reset` never deletes Airwallex connected accounts. `--hard` also removes seed users (orphans their CAs) and requires `--yes` or a confirmation prompt.
+- Fail fast with a helpful message if Airwallex login fails or platform capabilities are missing (see R1).
+- Spike scripts write raw responses to `scripts/spike/out/` (gitignored) and findings to `scripts/spike/FINDINGS.md`. Resolved findings go into `docs/13-open-questions-and-risks.md`.
+- Seed identity data lives in `scripts/seed-data/identity-fixture.ts` and is tagged `DEMO-ONLY:`.

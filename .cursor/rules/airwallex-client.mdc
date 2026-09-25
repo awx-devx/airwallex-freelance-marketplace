@@ -1,0 +1,23 @@
+---
+description: How to call the Airwallex API (auth, request_id, on-behalf-of, amounts, errors, logging)
+globs: src/lib/airwallex/**,src/services/**,scripts/**
+alwaysApply: false
+---
+
+# Airwallex API Usage
+
+Endpoint reference: `docs/03-airwallex-integration.md` §9. Don't invent endpoints or fields. Verify against https://www.airwallex.com/docs/llms.txt (API pages at `https://www.airwallex.com/docs/api/<product>/<resource>/<action>.md`).
+
+- Go through `src/lib/airwallex/client.ts` only; no raw `fetch` to Airwallex elsewhere.
+- Base URL comes from `AIRWALLEX_API_BASE` (sandbox: `https://api.sandbox.airwallex.com`).
+- Auth: `POST /api/v1/authentication/login` with `x-client-id` + `x-api-key`. Cache the token and refresh from `expires_at` (minus skew). On 401, re-login once and retry once.
+- Acting for a CA (balances, history, payouts): pass `onBehalfOf` → `x-on-behalf-of` header. PaymentIntents use body `connected_account_id` instead (collect-directly model).
+- `request_id`: always from `requestIds.ts` builders (for example `fs:{milestoneId}:seller`, max 64 chars). Treat `duplicate_request` as success and retrieve the existing object.
+- Amounts: decimal major units (`"90.00"`), converted via `toAwxAmount()`. Never multiply by 100.
+- Errors: throw `AirwallexError { status, code, message, traceId }`; callers branch on `code`.
+- Every call is logged to `airwallex_logs` with `relatedOfferId`/`relatedMilestoneId` when known. Redact `client_secret` and keys.
+
+Escrow specifics:
+- Card rail: create Funds Splits with `auto_release: false` right after PI success. **Never** use `funds_split_data` on PI create (it auto-releases).
+- Release: `POST /api/v1/pa/funds_splits/{id}/release`. Refund an unreleased milestone: split reversal, then `pa/refunds/create` with a partial `amount`.
+- Wallet rail: `charges/create` (buyer CA → platform) and `connected_account_transfers/create` (platform → CA).

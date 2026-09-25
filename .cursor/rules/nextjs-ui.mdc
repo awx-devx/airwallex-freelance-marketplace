@@ -1,0 +1,16 @@
+---
+description: Next.js App Router, server actions, route handlers and UI conventions
+globs: src/app/**,src/components/**
+alwaysApply: false
+---
+
+# Next.js and UI
+
+- Server Components by default. Add `'use client'` only for interactivity (forms, Drop-in, pollers).
+- Mutations from our UI are **server actions**. Route handlers are for auth, sync, search, and webhooks. See `docs/06-api-routes.md`.
+- Every action/handler: `requireUser()` → zod `parse` → one service call → map typed errors to `{ ok: false, error }` or an HTTP status.
+- Never import `src/lib/airwallex/*` or Mongoose models into client components.
+- Checkout: `@airwallex/components-sdk` only (not `airwallex-payment-elements`). `init({ env: 'demo', enabledElements: ['payments'] })`, mount the Drop-in **before** attaching listeners, and pass only `intent_id`, `client_secret`, and `currency` to the client.
+- Pending states (`AWAITING_PAYMENT`, `RELEASING`, `REFUNDING`) use `PendingPoller` (sync every 3s, stop after 60s, then `router.refresh()`).
+- UI is bare-bones and clean: Tailwind, shared `StatusPill`, `Money`, `FeeBreakdown`, `MilestoneCard`. Page specs are in `docs/09-ui-pages.md`.
+- Copy: "held in escrow" (funded), "released" (approved), "paid" (settled). Always show the fee split. Label payment screens as sandbox/demo.
