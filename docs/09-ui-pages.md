@@ -1,6 +1,6 @@
 # 09 — UI Kit and Pages
 
-Design direction: **bare-bones but clean.** One light theme, neutral surfaces, a single violet accent, generous whitespace, and no marketing pages. Desktop-first; usable down to 375px wide.
+Design direction: **bare-bones but clean.** One light theme, neutral surfaces, a single violet accent, generous whitespace, and no marketing pages. Layouts are designed for desktop and must stay usable on a phone (375px). See [Responsiveness](#responsiveness).
 
 Data access, hooks, and state rules are in [14-frontend-architecture.md](./14-frontend-architecture.md). API shapes are in [06-api-routes.md](./06-api-routes.md).
 
@@ -18,6 +18,29 @@ Data access, hooks, and state rules are in [14-frontend-architecture.md](./14-fr
 | Variants | `class-variance-authority` (shadcn default) |
 
 Dark mode is out of scope. Tokens are variables, so it can be added later.
+
+### Responsiveness
+
+Every screen and every UI-kit component is built to work at **375, 768, and 1024+**. Tailwind is mobile-first: unprefixed classes are the phone layout; `sm` / `md` / `lg` add the wider layout. Don't ship a desktop-only page and "fix mobile later".
+
+| Width | Breakpoint | What it represents |
+| --- | --- | --- |
+| 375px | default (no prefix) | Phone. Required. Nothing may overflow the viewport. |
+| 768px | `md` | Tablet. Two columns only when both columns stay readable. |
+| 1024px | `lg` | Desktop. Side-by-side layouts (create-offer form + summary, platform balances, UI-kit nav) start here. |
+
+Rules:
+
+- **No page-level horizontal scroll.** A wide table or JSON viewer scrolls inside its own `overflow-x-auto` container. Flex/grid children that truncate need `min-w-0`.
+- **Money stays on one line** (`whitespace-nowrap` + tabular nums). Long titles truncate with the full text available on hover or in the detail view.
+- **Primary actions stay visible** on a phone (pay, approve, submit delivery, send offer). Secondary actions can move into a menu. Action rows wrap or stack; the main button is full width below `sm` when it sits next to other buttons.
+- **Multi-column pages stack below `lg`.** Create-offer summary, platform balance pair, and the UI-kit sidebar become a single column. Sticky side panels are not sticky on small screens.
+- **Top bar** below `sm`: app name, then icon actions. Wallet amount and "New offer" label can collapse to an icon or into the user menu. Don't let the bar wrap into two crowded rows.
+- **Dialogs** are `w-full` with side margin below `sm`, and a max width on desktop. They must not exceed the viewport, and the body scrolls if the content is tall.
+- **Forms** (milestone editor, delivery links, login) stack fields vertically below `md`. Don't put amount, date, and title on one row on a phone.
+- **Touch targets** for buttons, icon buttons, tabs, and menu items are at least 44px tall below `md`.
+- **Home** already switches the three offer sections to tabs below `lg` (`?tab=`). Other long pages follow the same idea: don't stack three full lists on a phone if tabs fit.
+- **Review before done.** New components go on `/dev/ui-kit` and are checked with the width control (375 / 768 / 1024 / full). New screens are checked at 375 and 1024 in the browser, including empty, loading, and error states.
 
 ## 2. Design tokens (`src/app/globals.css`)
 

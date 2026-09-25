@@ -35,6 +35,16 @@ Specs: `docs/06-api-routes.md` (contract), `docs/14-frontend-architecture.md` (d
 - Every new component, or new variant or state, is added to `/dev/ui-kit` in the same commit.
 - Every data section has loading (skeleton), empty (`EmptyState`), and error (`ErrorState` + retry) states.
 
+## Responsiveness (required)
+Spec: `docs/09-ui-pages.md` § Responsiveness. Check 375, 768, and 1024+.
+
+- Tailwind mobile-first: default classes are the phone layout; `md` / `lg` add wider layouts. Don't leave a desktop-only layout for later.
+- No page-level horizontal scroll. Wide content scrolls inside its own container. Truncating flex children use `min-w-0`. Money stays `whitespace-nowrap`.
+- Below `lg`, multi-column pages (create-offer summary, platform balances, UI-kit nav) stack. Sticky side panels are not sticky on small screens.
+- Primary actions stay on screen at 375px (pay, approve, submit delivery, send offer). Dialogs are full width with margin below `sm`. Form fields stack below `md`.
+- Touch targets are at least 44px tall below `md`.
+- Before a screen or component is done, look at it at 375 and 1024, including empty, loading, and error states.
+
 ## Checkout
 - `@airwallex/components-sdk` only (not `airwallex-payment-elements`). `init({ env: 'demo', enabledElements: ['payments'] })`, mount the Drop-in **before** attaching listeners, and pass only `intent_id`, `client_secret`, and `currency` to the client. In mock mode render `MockCardForm` instead.
 
