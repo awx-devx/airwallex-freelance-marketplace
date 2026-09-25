@@ -65,6 +65,7 @@ Principles:
 
 ```text
 .
+├── public/                       # static files, served from / (images, downloads)
 ├── docs/                         # this documentation
 ├── scripts/
 │   ├── seed.ts                   # idempotent seed (accounts, users, offers)
