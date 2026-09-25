@@ -114,7 +114,8 @@ Principles:
 │   │   ├── db.ts                 # cached Mongoose connection
 │   │   ├── session.ts            # cookie session helpers
 │   │   ├── money.ts              # minor-unit helpers, formatting
-│   │   └── config.ts             # zod-validated env
+│   │   ├── config.ts             # zod-validated server env
+│   │   └── config.public.ts      # zod-validated NEXT_PUBLIC_* env
 │   ├── models/                   # Mongoose schemas (see 04-data-model.md)
 │   ├── services/
 │   │   ├── provisioning.ts       # user -> connected account -> welcome credit -> welcome offer
@@ -129,7 +130,7 @@ Principles:
 
 ## Environment variables
 
-All validated at boot in `src/lib/config.ts` with zod. Missing values should fail loudly.
+`NEXT_PUBLIC_*` values are validated with zod in `src/lib/config.public.ts` (safe to import from client code). Server secrets are validated at boot in `src/lib/config.ts` (added in B1). Missing server values should fail loudly. `NEXT_PUBLIC_API_MOCKS=true` is refused when `NODE_ENV=production` unless `ALLOW_MOCKS_IN_PROD=true`.
 
 | Variable | Example | Purpose |
 | --- | --- | --- |

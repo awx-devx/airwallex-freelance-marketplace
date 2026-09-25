@@ -198,7 +198,7 @@ Behaviour:
 - **Error injection:** `scenarios.ts` can make the next N calls to a route fail (for example `AIRWALLEX_ERROR` on approve) to build error states.
 - **Mock devtools:** a small floating panel (only when mocks are on): switch user, pick a scenario, reset mock DB, set latency, fire "webhook now" for pending items.
 
-`// DEMO-ONLY:` The mock transport is a development tool. It must never be enabled in a deployed build: `config.ts` throws if `NEXT_PUBLIC_API_MOCKS=true` and `NODE_ENV=production`, unless `ALLOW_MOCKS_IN_PROD=true` is set explicitly for a UI preview deployment. `// PROD:` Remove mocks from production bundles (dynamic import behind the flag, so they're tree-shaken).
+`// DEMO-ONLY:` The mock transport is a development tool. It must never be enabled in a deployed build: `src/lib/config.public.ts` throws if `NEXT_PUBLIC_API_MOCKS=true` and `NODE_ENV=production`, unless `ALLOW_MOCKS_IN_PROD=true` is set explicitly for a UI preview deployment. `// PROD:` Remove mocks from production bundles (dynamic import behind the flag, so they're tree-shaken).
 
 **Why a custom mock transport instead of MSW?** It needs no service worker setup in the App Router, works identically in tests and Storybook-less demo pages, and can share pure domain code (fees, permissions) directly. MSW is a fine alternative if we later want network-level mocking; the API library wouldn't change.
 
