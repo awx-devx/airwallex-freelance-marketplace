@@ -2,13 +2,21 @@
 
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ApiError } from "@/lib/api/errors";
+import { publicConfig } from "@/lib/config.public";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+
+const MockDevtools = dynamic(() => import("@/components/dev/mock-devtools"), { ssr: false });
+
+if (publicConfig.apiMocks) {
+  void import("@/lib/api");
+}
 
 declare module "@tanstack/react-query" {
   interface Register {
@@ -71,6 +79,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <TooltipProvider>
           {children}
           <Toaster />
+          {publicConfig.apiMocks ? <MockDevtools /> : null}
           {process.env.NODE_ENV === "development" ? <ReactQueryDevtools initialIsOpen={false} /> : null}
         </TooltipProvider>
       </QueryClientProvider>

@@ -182,7 +182,7 @@ src/lib/api/mock/
 ├── router.ts         # tiny path matcher: 'POST /api/offers/:id/milestones/:mid/approve'
 ├── db.ts             # in-memory store (users, offers, wallets, activity, awx events); persisted to localStorage
 ├── fixtures.ts       # seed personas + offers mirroring docs/08-seeding.md
-├── handlers/         # one file per resource, implementing docs/06 behaviour
+├── actions.ts        # route behaviour from docs/06, one function per route
 ├── simulate.ts       # delayed "webhooks": RELEASING → PAID after ~2.5s, etc.
 └── scenarios.ts      # named states: 'fresh-seed', 'empty-new-user', 'everything-pending', 'errors'
 ```
