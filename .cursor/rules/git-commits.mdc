@@ -7,8 +7,13 @@ alwaysApply: true
 
 Spec: https://www.conventionalcommits.org/en/v1.0.0/
 
+## Ask before committing
+- **Always ask the user before running `git commit`** (and before amend, rebase, or anything else that rewrites history). Show the proposed message(s) and the files included, then wait for approval.
+- Exception: skip asking only after the user **explicitly** grants ongoing permission (for example "keep committing without asking"). That permission lasts for the current conversation only, and the user can revoke it at any time.
+- An instruction to do a task is not permission to commit it.
+
 ## When to commit
-- Commit after **each logical, working unit** (a model, a service function plus its tests, a page, a doc update). Don't batch unrelated changes.
+- Propose a commit after **each logical, working unit** (a model, a service function plus its tests, a page, a doc update). Don't batch unrelated changes.
 - Each commit should build/typecheck on its own so `git revert <sha>` is safe.
 - Separate refactors and formatting from behaviour changes.
 - Commit docs changes together with the code they describe.

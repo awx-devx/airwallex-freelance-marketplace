@@ -45,7 +45,7 @@ Audit with `rg -n "DEMO-ONLY:|SANDBOX:" src scripts`.
 
 ## Commits
 
-Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/). Commit **small and often**, one logical unit per commit, and each commit should typecheck so it can be reverted cleanly. Update docs in the same commit as the behaviour they describe. Format: `type(scope): summary`. Scopes and examples are in `.cursor/rules/git-commits.mdc`. Never commit secrets or `.env.local`. Don't push unless asked.
+**Ask the user before every commit** (show the message and files) unless they have explicitly said to keep committing without asking in the current conversation. Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/). Commit **small and often**, one logical unit per commit, and each commit should typecheck so it can be reverted cleanly. Update docs in the same commit as the behaviour they describe. Format: `type(scope): summary`. Scopes and examples are in `.cursor/rules/git-commits.mdc`. Never commit secrets or `.env.local`. Don't push unless asked.
 
 ## Commands (once scaffolded)
 
