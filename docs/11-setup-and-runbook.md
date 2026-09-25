@@ -20,7 +20,7 @@
 # prerequisites: Node 20+, a MongoDB (local or Atlas)
 cp .env.example .env.local        # fill in Airwallex + Mongo values
 npm install
-npm run spike:all                 # Phase-0 sandbox checks (see 12-implementation-plan.md)
+npm run spike:all                 # B0 sandbox checks (see 12-implementation-plan.md)
 npm run seed                      # creates Revenue CA, seed users, seed offers
 npm run dev                       # http://localhost:3000
 ```

@@ -19,6 +19,7 @@ Everything runs on **one Airwallex sandbox account** (the "platform"). Every use
 | Wallet rail (secondary) | Users can also pay from their wallet balance using **Charges** (buyer to platform) and **Connected Account Transfers** (platform to seller). The seed script uses this rail too. |
 | Status updates | Airwallex **webhooks** drive state changes. A "sync" fallback retrieves objects directly for local development. |
 | Stack | Next.js (App Router) + MongoDB (Mongoose). **No Redis** (not needed; see architecture doc). |
+| Frontend | REST API → typed API library → TanStack Query hooks. The UI is built first against an in-memory **mock transport**, using shadcn/ui + Tailwind and a `/dev/ui-kit` showcase page. |
 
 ## Reading order
 
@@ -27,14 +28,17 @@ Everything runs on **one Airwallex sandbox account** (the "platform"). Every use
 3. [03-airwallex-integration.md](./03-airwallex-integration.md): **the core doc**. Money model, funds flows, fee math, every Airwallex endpoint we call.
 4. [04-data-model.md](./04-data-model.md): MongoDB collections, schemas, indexes, state machines.
 5. [05-user-flows.md](./05-user-flows.md): each flow end to end (UI, server, Airwallex).
-6. [06-api-routes.md](./06-api-routes.md): Next.js route handlers and server actions.
+6. [06-api-routes.md](./06-api-routes.md): the REST API contract. Every route with request/response DTOs, the error envelope, and `allowedActions`.
 7. [07-webhooks.md](./07-webhooks.md): subscriptions, signature verification, idempotency, handler map.
 8. [08-seeding.md](./08-seeding.md): seed script, seed personas, guest accounts, reset.
-9. [09-ui-pages.md](./09-ui-pages.md): pages and components (bare-bones and clean).
+9. [09-ui-pages.md](./09-ui-pages.md): design tokens, UI kit inventory, the `/dev/ui-kit` demo page, and per-page specs (data hooks, states, actions).
 10. [10-demo-vs-production.md](./10-demo-vs-production.md): comment conventions and the full list of demo shortcuts.
 11. [11-setup-and-runbook.md](./11-setup-and-runbook.md): sandbox setup, running locally, demo script, troubleshooting.
 12. [12-implementation-plan.md](./12-implementation-plan.md): phased build plan, starting with a sandbox spike.
 13. [13-open-questions-and-risks.md](./13-open-questions-and-risks.md): things to verify in the sandbox before committing.
+14. [14-frontend-architecture.md](./14-frontend-architecture.md): API library, TanStack Query hooks, mock transport for UI-first development, and state management rules.
+
+**Building the UI first?** Read 06 → 14 → 09, then follow Track U in 12.
 
 ## Glossary
 

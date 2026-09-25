@@ -2,7 +2,7 @@
 
 This is the core document. It explains which Airwallex products we use, how money moves, how the fee is split, and exactly which endpoints are called at each step.
 
-> **Verify before building.** Several behaviours below come from reading the docs, not from running them. They are listed in [13-open-questions-and-risks.md](./13-open-questions-and-risks.md) and must be confirmed in the **Phase 0 sandbox spike** ([12-implementation-plan.md](./12-implementation-plan.md)).
+> **Verify before building.** Several behaviours below come from reading the docs, not from running them. They are listed in [13-open-questions-and-risks.md](./13-open-questions-and-risks.md) and must be confirmed in the **B0 sandbox spike** ([12-implementation-plan.md](./12-implementation-plan.md)).
 
 ## 1. Account topology
 
@@ -103,7 +103,7 @@ sequenceDiagram
   participant DB as MongoDB
   participant AX as Airwallex
 
-  B->>S: Accept offer (server action)
+  B->>S: Accept offer (POST /api/offers/:id/payments/card)
   S->>AX: POST /pa/payment_intents/create {amount: total, currency, merchant_order_id: offerId,<br/>connected_account_id: sellerCA, metadata, return_url}
   AX-->>S: {id: int_..., client_secret}
   S->>DB: payment {PENDING, paymentIntentId}; offer → AWAITING_PAYMENT

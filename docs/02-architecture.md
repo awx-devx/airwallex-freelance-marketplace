@@ -4,13 +4,17 @@
 
 | Layer | Choice | Notes |
 | --- | --- | --- |
-| Framework | **Next.js (App Router), TypeScript** | Route handlers for APIs and webhooks, server actions for form mutations, React Server Components for pages. |
+| Framework | **Next.js (App Router), TypeScript** | REST route handlers (`src/app/api`) for everything the UI calls, plus the webhook. Pages are thin server components rendering client "screens". No server actions for data. |
+| Client data | **TanStack Query** over a typed **API library** (`src/lib/api`) | Swappable transport: real `fetch` or an in-memory **mock transport** for UI-first development. See [14-frontend-architecture.md](./14-frontend-architecture.md). |
+| Client state | No global store | Server state in the Query cache, URL state in search params, forms in `react-hook-form`, local UI in `useState`. |
+| Contracts | `src/contracts` (zod schemas + DTO types) | Shared by route handlers, API library, and mocks. Spec: [06-api-routes.md](./06-api-routes.md). |
 | Database | **MongoDB** via **Mongoose** | MongoDB Atlas free tier or local `mongod`. |
 | Payments / accounts | **Airwallex sandbox** (`https://api.sandbox.airwallex.com`) | Called server-side only, with a thin typed client (`src/lib/airwallex`). |
 | Checkout UI | **`@airwallex/components-sdk`** (Airwallex.js), Drop-in element | `init({ env: 'demo', enabledElements: ['payments'] })`. Do **not** use the legacy `airwallex-payment-elements` package. |
 | Auth | Email + password (bcrypt) with a signed, httpOnly session cookie (`jose` JWT) | No email verification (demo-only). |
-| Validation | `zod` | Shared between server actions and route handlers. |
-| Styling | Tailwind CSS (optionally shadcn/ui primitives) | Bare-bones and clean. |
+| Validation | `zod` | Same schemas validate forms (client), mock handlers, and route handlers. |
+| Forms | `react-hook-form` + `@hookform/resolvers/zod` | |
+| Styling / UI kit | Tailwind CSS v4 + **shadcn/ui** (Radix), `lucide-react`, `sonner` toasts | Bare-bones and clean. Tokens and inventory in [09-ui-pages.md](./09-ui-pages.md). |
 | Scripts | `tsx` | `scripts/seed.ts`, `scripts/reset.ts`, `scripts/spike/*.ts`. |
 | Redis | **Not used** | See [Why no Redis](#why-no-redis). |
 
@@ -19,13 +23,15 @@
 ```mermaid
 flowchart TB
   subgraph Browser
-    UI[Next.js pages\nRSC + client components]
+    UI[Client screens\ncomponents + UI kit]
+    HK[TanStack Query hooks]
+    API[API library\nsrc/lib/api]
+    MOCK[Mock transport\nUI-first dev only]
     DropIn[Airwallex Drop-in element]
   end
 
   subgraph "Next.js server"
-    SA[Server actions\noffers, milestones, wallet]
-    RH[Route handlers\n/api/*]
+    RH[REST route handlers\n/api/*]
     WH[/api/webhooks/airwallex/]
     SVC[Domain services\nescrow, offers, provisioning, fees]
     AWX[Airwallex client\nauth token cache, request_id, logging]
@@ -34,10 +40,10 @@ flowchart TB
   DB[(MongoDB)]
   AX[(Airwallex sandbox API)]
 
-  UI --> SA
-  UI --> RH
+  UI --> HK --> API
+  API -- "fetch /api/*" --> RH
+  API -. "NEXT_PUBLIC_API_MOCKS=true" .-> MOCK
   DropIn -- "confirms PaymentIntent\n(client_secret)" --> AX
-  SA --> SVC
   RH --> SVC
   WH --> SVC
   SVC --> DB
@@ -49,7 +55,9 @@ flowchart TB
 Principles:
 
 - **All Airwallex calls are server-side.** The browser only ever receives a PaymentIntent `id` and `client_secret`.
-- **Domain services own business rules** (`src/services`). Route handlers and server actions are thin: auth check, then validate, then call a service.
+- **Domain services own business rules** (`src/services`). Route handlers are thin: auth check, then validate, then call a service, then map to a DTO.
+- **One contract, three implementations.** `src/contracts` defines DTOs and inputs; route handlers, the mock transport, and the API library all conform to it. The UI never depends on Mongo documents directly.
+- **The server decides what the viewer can do.** DTOs include `allowedActions`, computed by a pure `permissions.ts` shared with the mocks.
 - **Webhooks are the source of truth** for money state. UI actions only *request* transitions (for example, "approve" moves a milestone to `RELEASING`). The webhook confirms it (`RELEASED`).
 - **Every Airwallex request/response and every webhook is logged** to MongoDB (`airwallex_logs`, `webhook_events`) and surfaced in the activity panel. This is the most useful demo feature for technical audiences.
 
@@ -61,24 +69,38 @@ Principles:
 ├── scripts/
 │   ├── seed.ts                   # idempotent seed (accounts, users, offers)
 │   ├── reset.ts                  # wipe Mongo demo data (does NOT delete Airwallex accounts)
-│   └── spike/                    # phase-0 sandbox experiments (see 12-implementation-plan.md)
+│   └── spike/                    # B0 sandbox experiments (see 12-implementation-plan.md)
 ├── src/
 │   ├── app/
-│   │   ├── (auth)/login/page.tsx
-│   │   ├── (auth)/signup/page.tsx
-│   │   ├── page.tsx              # home: incoming offers + my contracts
-│   │   ├── offers/new/page.tsx
-│   │   ├── offers/[id]/page.tsx
-│   │   ├── offers/[id]/pay/page.tsx
-│   │   ├── offers/[id]/pay/return/page.tsx
-│   │   ├── wallet/page.tsx
-│   │   ├── platform/page.tsx     # DEMO-ONLY operator view
-│   │   └── api/
-│   │       ├── auth/{login,signup,guest,logout}/route.ts
-│   │       ├── offers/[id]/sync/route.ts
-│   │       ├── users/search/route.ts
+│   │   ├── providers.tsx         # QueryClientProvider, Toaster, MockDevtools (mock mode)
+│   │   ├── (public)/login/page.tsx
+│   │   ├── (public)/signup/page.tsx
+│   │   ├── (app)/page.tsx        # home: incoming offers + my contracts
+│   │   ├── (app)/welcome/page.tsx
+│   │   ├── (app)/offers/new/page.tsx
+│   │   ├── (app)/offers/[id]/page.tsx
+│   │   ├── (app)/offers/[id]/pay/page.tsx
+│   │   ├── (app)/offers/[id]/pay/return/page.tsx
+│   │   ├── (app)/wallet/page.tsx
+│   │   ├── (app)/platform/page.tsx   # DEMO-ONLY operator view
+│   │   ├── dev/ui-kit/page.tsx   # DEMO-ONLY component showcase
+│   │   └── api/                  # REST routes, full list in docs/06
+│   │       ├── auth/..., me/..., config/public, users/search
+│   │       ├── offers/..., offers/[id]/milestones/[mid]/..., offers/[id]/payments/...
+│   │       ├── wallet/..., platform/...
 │   │       └── webhooks/airwallex/route.ts
+│   ├── contracts/                # zod schemas + DTO types + permissions.ts (shared client/server/mock)
+│   ├── hooks/                    # TanStack Query hooks + queryKeys.ts
+│   ├── components/
+│   │   ├── ui/                   # UI kit primitives (shadcn/ui-based)
+│   │   ├── domain/               # Money, StatusPill, FeeBreakdown, MilestoneCard, ...
+│   │   ├── layout/               # AppShell, TopBar, DemoBanner, PageHeader
+│   │   ├── screens/              # one client screen per page
+│   │   └── providers/
+│   ├── server/                   # server-only: route() wrapper, DTO mappers
 │   ├── lib/
+│   │   ├── api/                  # API library (client) + mock/ transport
+│   │   ├── utils.ts              # cn() and small helpers
 │   │   ├── airwallex/
 │   │   │   ├── client.ts         # fetch wrapper, token cache, logging, errors
 │   │   │   ├── accounts.ts       # create / submit / simulate status / retrieve
@@ -101,7 +123,7 @@ Principles:
 │   │   ├── escrow.ts             # create held splits, release, reverse/refund
 │   │   ├── fees.ts               # fee breakdown math (pure, unit-tested)
 │   │   └── webhookHandlers.ts    # event name -> handler
-│   └── components/               # UI components
+│   └── middleware.ts             # real mode: redirect to /login without a session cookie
 └── .env.example
 ```
 
@@ -120,6 +142,9 @@ All validated at boot in `src/lib/config.ts` with zod. Missing values should fai
 | `AIRWALLEX_WEBHOOK_SECRET` | from sandbox web app webhook settings | HMAC key for `x-signature`. |
 | `AIRWALLEX_PLATFORM_ACCOUNT_ID` | `acct_...` | Our platform account ID (for display and sanity checks). |
 | `NEXT_PUBLIC_AIRWALLEX_ENV` | `demo` | Airwallex.js `init({ env })`. `demo` = sandbox. |
+| `NEXT_PUBLIC_API_MOCKS` | `true` | UI uses the in-memory mock transport instead of `/api/*` (UI-first development). Refused in production builds unless `ALLOW_MOCKS_IN_PROD=true`. |
+| `ALLOW_MOCKS_IN_PROD` | `false` | Explicit opt-in for a mock-backed UI preview deployment. |
+| `NEXT_PUBLIC_ENABLE_UI_KIT` | `false` | Expose `/dev/ui-kit` in production builds (always on in development). |
 | `DEMO_CURRENCY` | `USD` | Single currency for the demo. |
 | `PLATFORM_FEE_PERCENT` | `10` | Total fee taken from each milestone. |
 | `PROCESSING_RESERVE_PERCENT` | `2` | Part of the fee left unsplit on the platform account to absorb Airwallex processing fees. Must be `<= PLATFORM_FEE_PERCENT`. |

@@ -1,6 +1,6 @@
 # 13 — Open Questions and Risks
 
-Each item is something the docs don't fully settle. **Resolve all of them in the Phase 0 spike** ([12](./12-implementation-plan.md#phase-0--sandbox-spike-scripts-only-no-ui)) and update this file with findings.
+Each item is something the docs don't fully settle. **Resolve all of them in the B0 sandbox spike** ([12](./12-implementation-plan.md#b0--sandbox-spike-scripts-only-can-run-in-parallel-with-track-u)) and update this file with findings.
 
 | ID | Question / risk | Impact if wrong | Mitigation / fallback |
 | --- | --- | --- | --- |

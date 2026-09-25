@@ -71,6 +71,9 @@ rg -n "SANDBOX:" src scripts
 | **Logs** | Full request/response bodies (redacted) stored in Mongo and **shown to users** in the activity panel | Structured logs in an observability stack; never show raw API payloads to end users |
 | **Concurrency** | Conditional Mongo updates only | Plus transactions where multi-document, plus an outbox pattern for external calls |
 | **Deliverables** | Links only | File uploads with virus scanning and storage |
+| **Mock transport** | UI can run entirely on in-memory mock data (`NEXT_PUBLIC_API_MOCKS=true`), including mock session and mock card form | Dev/preview only; refused in production builds unless `ALLOW_MOCKS_IN_PROD=true`; tree-shaken from real builds |
+| **`/dev/ui-kit` page** | Component showcase available in development (and optionally in production via `NEXT_PUBLIC_ENABLE_UI_KIT`) | Internal tool, not shipped to users |
+| **Client-side auth gating in mock mode** | `AppShell` redirects based on `useMe()`; no middleware check | Server-side session check (middleware) always |
 | **Seed/reset scripts** | Move sandbox money, create accounts, wipe DB | Not present in production builds |
 | **Compliance** | None (no sanctions screening UI, no tax forms, no ToS) | Platform ToS, seller agreements, tax forms (for example the Embedded Tax Form component), transaction monitoring response (RFIs) |
 | **Secrets** | `.env.local` | Secret manager, key rotation, scoped/restricted API keys ([API key best practices](https://www.airwallex.com/docs/developer-tools/api/api-key-best-practices.md)) |

@@ -1,6 +1,6 @@
 # 05 — User Flows
 
-Each flow lists **UI**, **server**, **Airwallex**, and **DB** effects. Airwallex endpoint details are in [03-airwallex-integration.md](./03-airwallex-integration.md).
+Each flow lists **UI**, **server**, **Airwallex**, and **DB** effects. Airwallex endpoint details are in [03-airwallex-integration.md](./03-airwallex-integration.md). Names like `escrow.approveMilestone` are **service functions**. The REST route that calls each one, and its request/response DTOs, are in [06-api-routes.md](./06-api-routes.md). The mock transport ([14](./14-frontend-architecture.md#4-mock-transport-srclibapimock--ui-first-development)) simulates the same transitions.
 
 ---
 
@@ -8,7 +8,7 @@ Each flow lists **UI**, **server**, **Airwallex**, and **DB** effects. Airwallex
 
 **UI:** `/signup`. Fields: name, email, password, optional headline. Copy says "No email verification — this is a demo."
 
-**Server (`POST /api/auth/signup` or server action):**
+**Server (`POST /api/auth/signup`):**
 
 1. Validate with zod. Email must be unique (case-insensitive).
 2. Create `users` doc with `kind: REGULAR`, `provisioning.step: NONE`.
@@ -93,7 +93,7 @@ No Airwallex calls happen yet.
 
 ### Card rail
 
-1. Page load calls server action `funding.startCardPayment(offerId)`:
+1. Page load calls `POST /api/offers/:id/payments/card`, which runs `funding.startCardPayment(offerId)`:
    - Guard: caller is buyer; offer is `SENT` or `AWAITING_PAYMENT`.
    - Reuse an existing `PENDING` payment if its PI is still payable; otherwise create payment attempt N and `POST /pa/payment_intents/create` with `amount = total`, `currency`, `merchant_order_id = offerId`, `request_id = pi:{offerId}:{N}`, `connected_account_id = sellerCA`, `metadata = { offerId, offerRef }`, `return_url = {APP_URL}/offers/{id}/pay/return`.
    - Offer → `AWAITING_PAYMENT`.
