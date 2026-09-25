@@ -190,7 +190,7 @@ function InputsSection() {
 
 function MoneySection() {
   return (
-    <KitSection id="money-input" title="MoneyInput" note="Keeps the raw decimal string and previews a formatted amount.">
+    <KitSection id="money-input" title="MoneyInput" note="Keeps the raw decimal string. A valid amount previews in Newsreader.">
       <MoneyDemo caption="MoneyInput / empty" initial="" />
       <MoneyDemo caption="MoneyInput / valid" initial="450.00" />
       <MoneyDemo caption="MoneyInput / invalid" initial="4.5.0" />
@@ -353,7 +353,7 @@ function DateSection() {
 
 function CardSection() {
   return (
-    <KitSection id="card" title="Card" note="Cards sit on the surface background. Interactive cards lift on hover.">
+    <KitSection id="card" title="Card" note="Hairline border, no shadow. Interactive cards darken the border on hover.">
       <Variant caption="Card / plain">
         <Card>
           <CardContent>Milestone 1 · Discovery</CardContent>
@@ -372,7 +372,7 @@ function CardSection() {
       </Variant>
       <Variant caption="Card / interactive">
         <Card interactive>
-          <CardContent>Hover to lift the card.</CardContent>
+          <CardContent>Hover to darken the border.</CardContent>
         </Card>
       </Variant>
     </KitSection>
@@ -381,7 +381,7 @@ function CardSection() {
 
 function BadgeSection() {
   return (
-    <KitSection id="badge" title="Badge" note="Status tones used by pills and counts.">
+    <KitSection id="badge" title="Badge" note="Status tones used by labels and counts.">
       {(["neutral", "info", "success", "warning", "danger", "outline"] as const).map((variant) => (
         <Variant key={variant} caption={`Badge / ${variant}`}>
           <Badge variant={variant}>{variant}</Badge>
@@ -613,11 +613,11 @@ function TableSection() {
           <TableBody>
             <TableRow>
               <TableCell>Discovery</TableCell>
-              <TableCell className="text-right tabular-nums">$300.00</TableCell>
+              <TableCell className="money text-right text-lg">$300.00</TableCell>
             </TableRow>
             <TableRow>
               <TableCell>Delivery</TableCell>
-              <TableCell className="text-right tabular-nums">$700.00</TableCell>
+              <TableCell className="money text-right text-lg">$700.00</TableCell>
             </TableRow>
           </TableBody>
         </Table>
@@ -675,8 +675,8 @@ function ListSection() {
         <KeyValueList
           items={[
             { label: "Offer", value: "off_123" },
-            { label: "Amount", value: "$1,000.00" },
-            { label: "Held", value: "$700.00" },
+            { label: "Amount", value: <span className="money text-xl">$1,000.00</span> },
+            { label: "Held", value: <span className="money text-xl">$700.00</span> },
           ]}
         />
       </Variant>

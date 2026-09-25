@@ -22,7 +22,8 @@ const typeScale = [
   ["text-base", "16px", "text-base"],
   ["text-lg", "18px", "text-lg"],
   ["text-xl", "20px", "text-xl"],
-  ["text-2xl", "24px · page titles", "text-2xl font-semibold"],
+  ["text-2xl", "24px", "text-2xl"],
+  ["text-3xl", "30px · page titles, Newsreader", "font-serif text-3xl font-medium tracking-tight"],
 ] as const;
 
 function rgbToHex(color: string) {
@@ -74,7 +75,7 @@ export function TokensSection() {
     <KitSection
       id="tokens"
       title="Tokens"
-      note="Swatches follow the active theme. Violet accent, slate text, 10px radius."
+      note="Editorial fintech. Paper and ink, Newsreader for titles and amounts, Inter for UI. Swatches follow the active theme."
     >
       <Variant caption="Color" className="@min-[720px]:col-span-2">
         <div className="grid grid-cols-2 gap-3 @min-[520px]:grid-cols-5">
@@ -91,16 +92,19 @@ export function TokensSection() {
             </p>
           ))}
           <p className="text-sm">
-            Weights: <span className="font-normal">400 body</span>, <span className="font-medium">500 labels</span>,{" "}
-            <span className="font-semibold">600 headings</span>
+            Inter: <span className="font-normal">400 body</span>, <span className="font-medium">500 labels</span>. Newsreader 500 for headings.
           </p>
         </div>
       </Variant>
-      <Variant caption="Radius · 0.625rem">
+      <Variant caption="Money · Newsreader" className="@min-[720px]:col-span-2">
+        <p className="money text-5xl text-foreground">$1,250.00</p>
+        <p className="mt-2 text-xs text-muted-foreground">The amount is the largest type on the screen. Tabular figures, one line.</p>
+      </Variant>
+      <Variant caption="Radius · 0.25rem">
         <div className="flex items-center gap-3">
           <div className="size-12 rounded-md border border-border bg-muted" />
           <div className="size-12 rounded-lg border border-border bg-muted" />
-          <span className="text-xs text-muted-foreground">rounded-md / rounded-lg</span>
+          <span className="text-xs text-muted-foreground">4px</span>
         </div>
       </Variant>
       <Variant caption="Spacing · 4px scale">
@@ -111,13 +115,10 @@ export function TokensSection() {
         </div>
         <p className="mt-2 text-xs text-muted-foreground">Cards p-5 · gutters px-6 · content max-w-5xl</p>
       </Variant>
-      <Variant caption="Shadows" className="@min-[720px]:col-span-2">
-        <div className="flex flex-wrap gap-4">
-          {["shadow-xs", "shadow-sm", "shadow-md"].map((shadow) => (
-            <div key={shadow} className={`rounded-lg border border-border bg-background px-4 py-3 text-xs ${shadow}`}>
-              {shadow}
-            </div>
-          ))}
+      <Variant caption="Elevation" className="@min-[720px]:col-span-2">
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="rounded-lg border border-border bg-background px-4 py-3 text-xs">Hairline card</div>
+          <div className="rounded-lg border border-border bg-popover px-4 py-3 text-xs shadow-md">Menu shadow</div>
         </div>
       </Variant>
     </KitSection>

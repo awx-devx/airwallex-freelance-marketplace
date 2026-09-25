@@ -59,7 +59,7 @@ export function MoneyInput({
           {error}
         </p>
       ) : preview ? (
-        <p className="text-sm text-muted-foreground tabular-nums">{preview}</p>
+        <p className="money text-3xl text-foreground">{preview}</p>
       ) : null}
     </div>
   );

@@ -23,11 +23,11 @@ export function ThemeToggle() {
   const selected = options.findIndex((option) => option.id === theme);
 
   return (
-    <div role="radiogroup" aria-label="Theme" className="relative inline-grid grid-cols-3 rounded-lg bg-muted p-0.5">
+    <div role="radiogroup" aria-label="Theme" className="relative inline-grid grid-cols-3 rounded-md bg-muted p-0.5">
       {ready && selected >= 0 ? (
         <span
           aria-hidden
-          className="pointer-events-none absolute top-0.5 bottom-0.5 left-0.5 w-[calc((100%-0.25rem)/3)] rounded-md bg-background shadow-xs transition-transform duration-200"
+          className="pointer-events-none absolute top-0.5 bottom-0.5 left-0.5 w-[calc((100%-0.25rem)/3)] rounded-sm bg-background shadow-none transition-transform duration-200"
           style={{ transform: `translateX(${selected * 100}%)` }}
         />
       ) : null}

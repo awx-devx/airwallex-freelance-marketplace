@@ -1,6 +1,6 @@
 # 09 — UI Kit and Pages
 
-Design direction: **bare-bones but clean.** Neutral surfaces, a single violet accent, generous whitespace, and no marketing pages. **Light and dark** ship together; extra themes are more token sets on the same variables. See [Themes](#themes) and [Responsiveness](#responsiveness). Layouts are designed for desktop and must stay usable on a phone (375px).
+Design direction: **editorial fintech.** Paper and ink surfaces, a single violet accent, and no marketing pages. Titles and amounts use a serif; labels, controls, and body copy stay a sans. Corners are small (4px), not pills. Cards are hairline borders with no drop shadow. Dark mode is warm black, ivory type, and muted jewel status colours. **Light and dark** ship together; extra themes are more token sets on the same variables. See [Themes](#themes) and [Responsiveness](#responsiveness). Layouts are designed for desktop and must stay usable on a phone (375px).
 
 Data access, hooks, and state rules are in [14-frontend-architecture.md](./14-frontend-architecture.md). API shapes are in [06-api-routes.md](./06-api-routes.md).
 
@@ -13,7 +13,7 @@ Data access, hooks, and state rules are in [14-frontend-architecture.md](./14-fr
 | Icons | `lucide-react` |
 | Toasts | `sonner` (via the shadcn `Sonner` wrapper) |
 | Forms | `react-hook-form` + `@hookform/resolvers/zod` |
-| Font | Inter via `next/font/google`; `font-variant-numeric: tabular-nums` for money |
+| Font | Inter for UI; Newsreader for headings and amounts (`next/font/google`). Amounts also use `tabular-nums` and stay on one line. |
 | Class merging | `clsx` + `tailwind-merge` (`cn()` helper, shadcn default) |
 | Variants | `class-variance-authority` (shadcn default) |
 
@@ -65,36 +65,37 @@ Values below are the **light** theme (`:root`). Dark and any later theme overrid
 
 | Token | Value | Use |
 | --- | --- | --- |
-| `--background` | `#FFFFFF` | Page |
-| `--surface` | `#F8F9FB` | App background behind cards |
-| `--foreground` | `#0F172A` (slate-900) | Body text |
-| `--muted-foreground` | `#64748B` (slate-500) | Secondary text |
-| `--border` | `#E2E8F0` (slate-200) | Borders, dividers |
+| `--background` | `#FBF9F4` | Paper. Cards and sheets |
+| `--surface` | `#F3EFE6` | App canvas behind cards |
+| `--foreground` | `#1C1917` | Ink. Body text |
+| `--muted-foreground` | `#78716C` | Secondary text |
+| `--border` | `#E4DDD0` | Hairline borders, dividers |
 | `--primary` | `#612FFF` | Primary buttons, links, focus ring (close to Airwallex's brand violet) |
 | `--primary-foreground` | `#FFFFFF` | |
 | `--success` | `#16A34A` | Paid, completed |
 | `--warning` | `#D97706` | Pending, awaiting |
 | `--danger` | `#DC2626` | Failed, destructive |
 | `--info` | `#2563EB` | Held in escrow |
-| `--radius` | `0.625rem` | Cards, inputs, buttons (`rounded-md`/`rounded-lg`) |
+| `--radius` | `0.25rem` | Cards, inputs, buttons. Avatars, switches, and progress stay fully round. |
 
-Dark theme (class `dark` on `<html>`). Status colours are lifted so they stay readable as text. Primary stays `#612FFF`.
+Dark theme (class `dark` on `<html>`): three warm steps, canvas then sheet then card. Type is ivory. Status colours are muted jewels, not neon. Primary stays `#612FFF`.
 
-| Token | Value |
-| --- | --- |
-| `--background` | `#161922` |
-| `--surface` | `#0C0E14` |
-| `--foreground` | `#F8FAFC` |
-| `--muted-foreground` | `#94A3B8` |
-| `--border` | `#2C3344` |
-| `--primary` | `#612FFF` |
-| `--primary-foreground` | `#FFFFFF` |
-| `--success` | `#4ADE80` |
-| `--warning` | `#FBBF24` |
-| `--danger` | `#F87171` |
-| `--info` | `#60A5FA` |
+| Token | Value | Use |
+| --- | --- | --- |
+| `--surface` | `#0A0908` | Warm black canvas |
+| `--background` | `#16140F` | Sheet |
+| `--card` | `#1C1914` | Card, lifted off the sheet |
+| `--foreground` | `#F6F1E7` | Ivory |
+| `--muted-foreground` | `#9A9084` | Secondary text |
+| `--border` | `#322C24` | Warm hairline |
+| `--primary` | `#612FFF` | |
+| `--primary-foreground` | `#FFFFFF` | |
+| `--success` | `#8FB59A` | |
+| `--warning` | `#C9A36A` | |
+| `--danger` | `#C98B84` | |
+| `--info` | `#8AA8C4` | |
 
-Type scale: `text-xs` 12 / `text-sm` 14 (default UI text) / `text-base` 16 / `text-lg` 18 / `text-xl` 20 / `text-2xl` 24 (page titles). Weights: 400 body, 500 labels/buttons, 600 headings. Spacing on Tailwind's 4px scale; cards use `p-5`, page gutters `px-6`, max content width `max-w-5xl`.
+Type scale: `text-xs` 12 / `text-sm` 14 (default UI text, Inter) / `text-base` 16 / `text-lg` 18 / `text-xl` 20 / `text-3xl` 30 (page titles, Newsreader). Amounts use Newsreader, larger than the surrounding text, with tabular figures (`money` utility). Weights: 400 body, 500 labels and serif headings. Spacing on Tailwind's 4px scale; cards use `p-5` and a hairline border (no shadow), page gutters `px-6`, max content width `max-w-5xl`. Menus and popovers may still use a soft shadow.
 
 ### Status → visual mapping (single source: `src/components/domain/status.ts`)
 
@@ -131,7 +132,7 @@ Every component below must appear on the **UI kit demo page** (§4) in all liste
 | `Combobox` (user picker base) | empty, typing/loading, results, no results |
 | `Checkbox`, `Switch` | on/off/disabled |
 | `DateInput` | native `type="date"` styled; empty/filled/invalid |
-| `Card` | plain, with header/footer, interactive (hover) |
+| `Card` | plain, with header/footer, interactive (border darkens on hover) |
 | `Badge` | neutral, info, success, warning, danger, outline |
 | `Tabs` | 2–4 tabs, with counts |
 | `Dialog` | basic; **`ConfirmDialog`** (destructive variant with required reason textarea) |
@@ -199,7 +200,7 @@ Purpose: build and review every component in isolation, **before** pages exist, 
 - Route: `src/app/dev/ui-kit/page.tsx` (client). Enabled when `NODE_ENV !== 'production'` **or** `NEXT_PUBLIC_ENABLE_UI_KIT=true`; otherwise `notFound()`. `// DEMO-ONLY:` internal tool.
 - Layout: left sticky nav with anchors (`#buttons`, `#status-pill`, `#milestone-card`, ...), content on the right. Each section has a title, a one-line usage note, and a grid of variants with a small caption under each ("Button / destructive / loading").
 - Sections in order:
-  1. **Tokens:** color swatches (with hex), type scale, radius, spacing, shadows
+  1. **Tokens:** color swatches (with hex), type scale, money specimen, radius, spacing, elevation
   2. **Primitives** (in the order of the table above)
   3. **Layout:** `TopBar`, `DemoBanner` variants, `PageHeader`
   4. **Domain:** in the order of the table above; `MilestoneCard` gets a full status × role matrix
