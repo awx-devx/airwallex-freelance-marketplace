@@ -78,6 +78,22 @@ Values below are the **light** theme (`:root`). Dark and any later theme overrid
 | `--info` | `#2563EB` | Held in escrow |
 | `--radius` | `0.625rem` | Cards, inputs, buttons (`rounded-md`/`rounded-lg`) |
 
+Dark theme (class `dark` on `<html>`). Status colours are lifted so they stay readable as text. Primary stays `#612FFF`.
+
+| Token | Value |
+| --- | --- |
+| `--background` | `#161922` |
+| `--surface` | `#0C0E14` |
+| `--foreground` | `#F8FAFC` |
+| `--muted-foreground` | `#94A3B8` |
+| `--border` | `#2C3344` |
+| `--primary` | `#612FFF` |
+| `--primary-foreground` | `#FFFFFF` |
+| `--success` | `#4ADE80` |
+| `--warning` | `#FBBF24` |
+| `--danger` | `#F87171` |
+| `--info` | `#60A5FA` |
+
 Type scale: `text-xs` 12 / `text-sm` 14 (default UI text) / `text-base` 16 / `text-lg` 18 / `text-xl` 20 / `text-2xl` 24 (page titles). Weights: 400 body, 500 labels/buttons, 600 headings. Spacing on Tailwind's 4px scale; cards use `p-5`, page gutters `px-6`, max content width `max-w-5xl`.
 
 ### Status → visual mapping (single source: `src/components/domain/status.ts`)
@@ -190,7 +206,7 @@ Purpose: build and review every component in isolation, **before** pages exist, 
   5. **Composites:** a full `OfferScreen` rendered from a fixture (no network) in 3 states (incoming, active mid-way, completed)
   6. **Interactions:** buttons that trigger toasts, open dialogs, and simulate a pending → paid transition on a `MilestoneCard` (local state timer)
 - Data: import fixtures directly from `src/lib/api/mock/fixtures.ts` (typed DTOs). The kit page doesn't call hooks, except `UserPicker`, which uses the mock transport.
-- Controls at the top: toggle `viewerRole` (buyer/seller), "show loading", "show errors", and container width (375 / 768 / 1024 / full) to check responsiveness.
+- Controls at the top: theme (`light` / `dark` / `system`, next to the width control), container width (375 / 768 / 1024 / full), toggle `viewerRole` (buyer/seller), "show loading", and "show errors".
 - Acceptance: every component and state in §3 is visible, keyboard focus rings are visible, and nothing overflows at 375px.
 
 ## 5. Pages

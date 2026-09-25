@@ -1,16 +1,19 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { KitSection, Variant } from "@/components/dev/kit-section";
 
 const colors = [
-  ["Background", "#FFFFFF", "bg-background"],
-  ["Surface", "#F8F9FB", "bg-surface"],
-  ["Foreground", "#0F172A", "bg-foreground"],
-  ["Muted", "#64748B", "bg-muted-foreground"],
-  ["Border", "#E2E8F0", "bg-border"],
-  ["Primary", "#612FFF", "bg-primary"],
-  ["Success", "#16A34A", "bg-success"],
-  ["Warning", "#D97706", "bg-warning"],
-  ["Danger", "#DC2626", "bg-danger"],
-  ["Info", "#2563EB", "bg-info"],
+  ["Background", "bg-background"],
+  ["Surface", "bg-surface"],
+  ["Foreground", "bg-foreground"],
+  ["Muted", "bg-muted-foreground"],
+  ["Border", "bg-border"],
+  ["Primary", "bg-primary"],
+  ["Success", "bg-success"],
+  ["Warning", "bg-warning"],
+  ["Danger", "bg-danger"],
+  ["Info", "bg-info"],
 ] as const;
 
 const typeScale = [
@@ -22,17 +25,61 @@ const typeScale = [
   ["text-2xl", "24px · page titles", "text-2xl font-semibold"],
 ] as const;
 
+function rgbToHex(color: string) {
+  const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!match) return color;
+  const hex = match
+    .slice(1, 4)
+    .map((channel) => Number(channel).toString(16).padStart(2, "0"))
+    .join("");
+  return `#${hex}`.toUpperCase();
+}
+
+function ColorSwatch({ name, className }: { name: string; className: string }) {
+  const [hex, setHex] = useState("");
+
+  useEffect(() => {
+    const probe = document.createElement("div");
+    probe.className = className;
+    probe.style.position = "absolute";
+    probe.style.visibility = "hidden";
+    document.body.appendChild(probe);
+
+    const read = () => setHex(rgbToHex(getComputedStyle(probe).backgroundColor));
+    read();
+
+    const observer = new MutationObserver(read);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
+    const scheme = window.matchMedia("(prefers-color-scheme: dark)");
+    scheme.addEventListener("change", read);
+
+    return () => {
+      observer.disconnect();
+      scheme.removeEventListener("change", read);
+      probe.remove();
+    };
+  }, [className]);
+
+  return (
+    <div className="min-w-0">
+      <div className={`h-10 rounded-md border border-border ${className}`} />
+      <p className="mt-1 text-xs font-medium">{name}</p>
+      <p className="font-mono text-xs text-muted-foreground">{hex}</p>
+    </div>
+  );
+}
+
 export function TokensSection() {
   return (
-    <KitSection id="tokens" title="Tokens" note="One light theme. Violet accent, slate text, 10px radius.">
+    <KitSection
+      id="tokens"
+      title="Tokens"
+      note="Swatches follow the active theme. Violet accent, slate text, 10px radius."
+    >
       <Variant caption="Color" className="@min-[720px]:col-span-2">
         <div className="grid grid-cols-2 gap-3 @min-[520px]:grid-cols-5">
-          {colors.map(([name, hex, swatch]) => (
-            <div key={name} className="min-w-0">
-              <div className={`h-10 rounded-md border border-border ${swatch}`} />
-              <p className="mt-1 text-xs font-medium">{name}</p>
-              <p className="font-mono text-xs text-muted-foreground">{hex}</p>
-            </div>
+          {colors.map(([name, swatch]) => (
+            <ColorSwatch key={name} name={name} className={swatch} />
           ))}
         </div>
       </Variant>

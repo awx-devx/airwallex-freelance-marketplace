@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { PrimitivesSection } from "@/components/dev/primitives-section";
 import { TokensSection } from "@/components/dev/tokens-section";
 import { cn } from "cn";
@@ -90,13 +91,14 @@ export function UiKitScreen() {
                 </a>
               ))}
             </nav>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1" role="group" aria-label="Width">
               {widths.map(([id]) => (
                 <Button key={id} size="sm" variant={width === id ? "primary" : "outline"} onClick={() => setWidth(id)}>
                   {id}
                 </Button>
               ))}
             </div>
+            <ThemeToggle />
             <div className="flex items-center gap-1">
               {(["buyer", "seller"] as const).map((role) => (
                 <Button

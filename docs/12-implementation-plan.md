@@ -34,7 +34,7 @@ flowchart LR
 ### U1 — UI kit primitives + `/dev/ui-kit`
 
 - Add shadcn primitives and our own primitives from [09 §3](./09-ui-pages.md#primitives-srccomponentsui) (`MoneyInput`, `CopyButton`, `JsonViewer`, `EmptyState`, `ErrorState`, `Stepper`, `Timeline`, `KeyValueList`, ...).
-- `/dev/ui-kit` page with tokens + primitives sections, left nav, viewer/width controls.
+- `/dev/ui-kit` page with tokens + primitives sections, left nav, theme (light/dark/system), viewer, and width controls.
 
 **Demo:** `/dev/ui-kit` shows every primitive in every variant/state.
 
