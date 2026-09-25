@@ -34,7 +34,7 @@ Rules:
 - Put the comment **at the place where the shortcut lives**, not in a distant README.
 - Keep comments short and specific. State *what* and *what instead*, not a history of decisions.
 - Every file with a `DEMO-ONLY` must also be listed in the table below (keep it updated in the same PR).
-- Recommended: a root `AGENTS.md` with 5–10 lines pointing LLMs to `docs/` and explaining these tags.
+- The root `AGENTS.md` and `.cursor/rules/demo-comment-tags.mdc` restate these tags for agents. Keep all three in sync.
 
 Audit commands:
 

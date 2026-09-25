@@ -25,7 +25,7 @@ Small standalone `tsx` scripts in `scripts/spike/`, sharing the real `src/lib/ai
 - `src/lib/config.ts` (zod env), `src/lib/db.ts` (cached Mongoose connection), models from [04](./04-data-model.md).
 - Auth: signup/login/logout, session cookie, `requireUser()`, middleware redirect for protected routes.
 - Guest login endpoint (works once seed exists).
-- `AGENTS.md` at the root describing the comment tags and pointing to `docs/`.
+- Fill in the real npm script names in `AGENTS.md` if they differ from the planned ones.
 
 **Demo:** sign up and log in; empty home page.
 
