@@ -1,6 +1,6 @@
 # 09 — UI Kit and Pages
 
-Design direction: **bare-bones but clean.** One light theme, neutral surfaces, a single violet accent, generous whitespace, and no marketing pages. Layouts are designed for desktop and must stay usable on a phone (375px). See [Responsiveness](#responsiveness).
+Design direction: **bare-bones but clean.** Neutral surfaces, a single violet accent, generous whitespace, and no marketing pages. **Light and dark** ship together; extra themes are more token sets on the same variables. See [Themes](#themes) and [Responsiveness](#responsiveness). Layouts are designed for desktop and must stay usable on a phone (375px).
 
 Data access, hooks, and state rules are in [14-frontend-architecture.md](./14-frontend-architecture.md). API shapes are in [06-api-routes.md](./06-api-routes.md).
 
@@ -17,7 +17,24 @@ Data access, hooks, and state rules are in [14-frontend-architecture.md](./14-fr
 | Class merging | `clsx` + `tailwind-merge` (`cn()` helper, shadcn default) |
 | Variants | `class-variance-authority` (shadcn default) |
 
-Dark mode is out of scope. Tokens are variables, so it can be added later.
+### Themes
+
+A theme is a complete set of the CSS variables in [§2](#2-design-tokens-srcappglobalscss). Components never read a theme name and never hardcode hex colours. They use semantic tokens (`bg-background`, `text-foreground`, `bg-primary`, `text-success`, and so on), so a new theme is a new variable block, not a restyle of components.
+
+| Theme id | How it is applied | Notes |
+| --- | --- | --- |
+| `light` | `:root` (no extra class). Default. | Values in the token table below. |
+| `dark` | class `dark` on `<html>` | Same variable names. Must include `--surface`, `--success`, `--warning`, `--danger`, `--info`, and the violet `--primary` / `--ring`, not only the shadcn defaults. |
+| later ids | an extra class on `<html>`, for example `theme-contrast` | Registered next to light and dark. If the palette is dark, also include the `dark` class so existing `dark:` utilities keep working. |
+
+Rules:
+
+- **Built-in pair is light and dark.** Both are reviewed on `/dev/ui-kit` (a theme control next to the width control). A component isn't done until it is readable in both.
+- **Preference** is `light`, `dark`, or `system` (follow `prefers-color-scheme`). Store it in `localStorage` under `theme`. Default is `system`. Apply the class on `<html>` before paint so the first frame isn't the wrong theme.
+- **Use `next-themes`** with `attribute="class"`. It matches the existing `@custom-variant dark (&:is(.dark *))` and the `.dark` block in `globals.css`.
+- **Toasts follow the resolved theme.** Don't pin Sonner to `theme="light"`.
+- **Status colours are part of every theme.** `success`, `warning`, `danger`, and `info` must stay distinguishable on that theme's background. Primary stays the violet accent in both built-in themes.
+- **Adding a theme later:** add the id to one registry (label, class names, whether it is a dark palette), add the CSS variable block, and add it to the UI-kit theme control. No component changes.
 
 ### Responsiveness
 
@@ -43,6 +60,8 @@ Rules:
 - **Review before done.** New components go on `/dev/ui-kit` and are checked with the width control (375 / 768 / 1024 / full). New screens are checked at 375 and 1024 in the browser, including empty, loading, and error states.
 
 ## 2. Design tokens (`src/app/globals.css`)
+
+Values below are the **light** theme (`:root`). Dark and any later theme override the same names. See [Themes](#themes).
 
 | Token | Value | Use |
 | --- | --- | --- |
