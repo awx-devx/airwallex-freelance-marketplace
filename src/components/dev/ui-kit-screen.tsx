@@ -6,11 +6,17 @@ import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { CompositesSection } from "@/components/dev/composites-section";
+import { DomainSection } from "@/components/dev/domain-section";
+import { LayoutSection } from "@/components/dev/layout-section";
 import { PrimitivesSection } from "@/components/dev/primitives-section";
 import { TokensSection } from "@/components/dev/tokens-section";
 import { cn } from "cn";
 
-const nav = [
+const groups = [
+  {
+    label: "Primitives",
+    items: [
   ["tokens", "Tokens"],
   ["buttons", "Button"],
   ["inputs", "Input"],
@@ -39,7 +45,56 @@ const nav = [
   ["error-state", "ErrorState"],
   ["stepper", "Stepper"],
   ["timeline", "Timeline"],
-  ["toaster", "Toaster"],
+      ["toaster", "Toaster"],
+    ],
+  },
+  {
+    label: "Layout",
+    items: [
+      ["app-shell", "AppShell"],
+      ["top-bar", "TopBar"],
+      ["demo-banner", "DemoBanner"],
+      ["page-header", "PageHeader"],
+      ["section", "Section"],
+    ],
+  },
+  {
+    label: "Domain",
+    items: [
+      ["money", "Money"],
+      ["status-pill", "StatusPill"],
+      ["user-chip", "UserChip"],
+      ["wallet-chip", "WalletChip"],
+      ["fee-breakdown", "FeeBreakdown"],
+      ["offer-card", "OfferCard"],
+      ["offer-header", "OfferHeader"],
+      ["offer-action-bar", "OfferActionBar"],
+      ["escrow-summary", "EscrowSummary"],
+      ["milestone-card", "MilestoneCard"],
+      ["delivery-form", "DeliveryForm"],
+      ["delivery-view", "DeliveryView"],
+      ["review-actions", "ReviewActions"],
+      ["escrow-leg-list", "EscrowLegList"],
+      ["activity-timeline", "ActivityTimeline"],
+      ["airwallex-activity", "Airwallex"],
+      ["balance-table", "BalanceTable"],
+      ["transaction-list", "TransactionList"],
+      ["account-card", "AccountCard"],
+      ["test-card-hint", "TestCardHint"],
+      ["mock-card-form", "MockCardForm"],
+      ["drop-in-checkout", "DropInCheckout"],
+      ["user-picker", "UserPicker"],
+      ["milestone-editor", "MilestoneEditor"],
+      ["provisioning-checklist", "Provisioning"],
+    ],
+  },
+  {
+    label: "Composites",
+    items: [
+      ["offer-composite", "Offer"],
+      ["interactions", "Interactions"],
+    ],
+  },
 ] as const;
 
 const widths = [
@@ -72,12 +127,18 @@ export function UiKitScreen() {
     <div className="flex min-h-svh bg-surface text-foreground">
       <aside className="sticky top-0 hidden h-svh w-52 shrink-0 overflow-y-auto border-r border-border bg-background p-4 lg:block">
         <p className="text-sm font-semibold">UI kit</p>
-        <p className="mt-1 text-xs text-muted-foreground">Primitives</p>
-        <nav className="mt-4 flex flex-col gap-1">
-          {nav.map(([id, label]) => (
-            <a key={id} href={`#${id}`} className="rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
-              {label}
-            </a>
+        <nav className="mt-4 flex flex-col gap-3">
+          {groups.map((group) => (
+            <div key={group.label}>
+              <p className="px-2 text-xs text-muted-foreground">{group.label}</p>
+              <div className="mt-1 flex flex-col gap-1">
+                {group.items.map(([id, label]) => (
+                  <a key={id} href={`#${id}`} className="rounded-md px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground">
+                    {label}
+                  </a>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
       </aside>
@@ -85,11 +146,13 @@ export function UiKitScreen() {
         <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
           <div className="flex flex-wrap items-center gap-3">
             <nav className="flex gap-1 overflow-x-auto lg:hidden">
-              {nav.map(([id, label]) => (
-                <a key={id} href={`#${id}`} className="shrink-0 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted">
-                  {label}
-                </a>
-              ))}
+              {groups.flatMap((group) =>
+                group.items.map(([id, label]) => (
+                  <a key={id} href={`#${id}`} className="shrink-0 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted">
+                    {label}
+                  </a>
+                )),
+              )}
             </nav>
             <div className="flex items-center gap-1" role="group" aria-label="Width">
               {widths.map(([id]) => (
@@ -135,6 +198,9 @@ export function UiKitScreen() {
           ) : null}
           <TokensSection />
           <PrimitivesSection />
+          <LayoutSection />
+          <DomainSection viewerRole={viewerRole === "buyer" ? "BUYER" : "SELLER"} />
+          <CompositesSection viewerRole={viewerRole === "buyer" ? "BUYER" : "SELLER"} />
         </div>
       </div>
     </div>

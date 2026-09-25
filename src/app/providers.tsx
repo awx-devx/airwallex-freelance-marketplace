@@ -14,10 +14,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 const MockDevtools = dynamic(() => import("@/components/dev/mock-devtools"), { ssr: false });
 
-if (publicConfig.apiMocks) {
-  void import("@/lib/api");
-}
-
 declare module "@tanstack/react-query" {
   interface Register {
     mutationMeta: {
@@ -64,12 +60,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     redirectToLogin = () => {
+      if (window.location.pathname.startsWith("/dev")) return;
       router.replace("/login");
     };
     return () => {
       redirectToLogin = () => {};
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!publicConfig.apiMocks || process.env.VITEST) return;
+    void import("@/lib/api");
+  }, []);
 
   const [queryClient] = useState(() => createQueryClient(() => redirectToLogin()));
 
