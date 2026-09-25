@@ -4,8 +4,10 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@ta
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 import { ApiError } from "@/lib/api/errors";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 declare module "@tanstack/react-query" {
   interface Register {
@@ -64,9 +66,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {children}
-      <Toaster />
-      {process.env.NODE_ENV === "development" ? <ReactQueryDevtools initialIsOpen={false} /> : null}
+      <TooltipProvider>
+        {children}
+        <Toaster />
+        {process.env.NODE_ENV === "development" ? <ReactQueryDevtools initialIsOpen={false} /> : null}
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }

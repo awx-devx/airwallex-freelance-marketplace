@@ -72,7 +72,7 @@ rg -n "SANDBOX:" src scripts
 | **Concurrency** | Conditional Mongo updates only | Plus transactions where multi-document, plus an outbox pattern for external calls |
 | **Deliverables** | Links only | File uploads with virus scanning and storage |
 | **Mock transport** | UI can run entirely on in-memory mock data (`NEXT_PUBLIC_API_MOCKS=true`), including mock session and mock card form. `src/lib/config.public.ts` allows that flag in a production build only when `ALLOW_MOCKS_IN_PROD=true` | Dev/preview only; refused in production builds unless `ALLOW_MOCKS_IN_PROD=true`; tree-shaken from real builds |
-| **`/dev/ui-kit` page** | Component showcase available in development (and optionally in production via `NEXT_PUBLIC_ENABLE_UI_KIT`) | Internal tool, not shipped to users |
+| **`/dev/ui-kit` page** | Component showcase (`src/app/dev/ui-kit/page.tsx`) available when `NODE_ENV` is not production, and optionally in production via `NEXT_PUBLIC_ENABLE_UI_KIT` | Internal tool, not shipped to users |
 | **Client-side auth gating in mock mode** | `AppShell` redirects based on `useMe()`; no middleware check | Server-side session check (middleware) always |
 | **Seed/reset scripts** | Move sandbox money, create accounts, wipe DB | Not present in production builds |
 | **Compliance** | None (no sanctions screening UI, no tax forms, no ToS) | Platform ToS, seller agreements, tax forms (for example the Embedded Tax Form component), transaction monitoring response (RFIs) |
