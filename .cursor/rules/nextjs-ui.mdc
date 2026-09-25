@@ -1,16 +1,42 @@
 ---
-description: Next.js App Router, server actions, route handlers and UI conventions
-globs: src/app/**,src/components/**
+description: Next.js App Router, API library, TanStack Query hooks, state management, UI kit conventions
+globs: src/app/**,src/components/**,src/hooks/**,src/lib/api/**,src/contracts/**
 alwaysApply: false
 ---
 
-# Next.js and UI
+# Next.js, data access, and UI
 
-- Server Components by default. Add `'use client'` only for interactivity (forms, Drop-in, pollers).
-- Mutations from our UI are **server actions**. Route handlers are for auth, sync, search, and webhooks. See `docs/06-api-routes.md`.
-- Every action/handler: `requireUser()` → zod `parse` → one service call → map typed errors to `{ ok: false, error }` or an HTTP status.
-- Never import `src/lib/airwallex/*` or Mongoose models into client components.
-- Checkout: `@airwallex/components-sdk` only (not `airwallex-payment-elements`). `init({ env: 'demo', enabledElements: ['payments'] })`, mount the Drop-in **before** attaching listeners, and pass only `intent_id`, `client_secret`, and `currency` to the client.
-- Pending states (`AWAITING_PAYMENT`, `RELEASING`, `REFUNDING`) use `PendingPoller` (sync every 3s, stop after 60s, then `router.refresh()`).
-- UI is bare-bones and clean: Tailwind, shared `StatusPill`, `Money`, `FeeBreakdown`, `MilestoneCard`. Page specs are in `docs/09-ui-pages.md`.
-- Copy: "held in escrow" (funded), "released" (approved), "paid" (settled). Always show the fee split. Label payment screens as sandbox/demo.
+Specs: `docs/06-api-routes.md` (contract), `docs/14-frontend-architecture.md` (data + state), `docs/09-ui-pages.md` (UI kit + pages).
+
+## Data flow
+- UI → hooks (`src/hooks`, TanStack Query) → API library (`src/lib/api`) → transport (fetch `/api/*`, or the mock transport when `NEXT_PUBLIC_API_MOCKS=true`).
+- Components never call `fetch` or the API library directly; always use a hook. **No server actions** for data.
+- DTOs and input schemas come from `src/contracts` only. Don't hand-write response types in components or hooks.
+- Buttons come from `allowedActions` on `OfferDTO` / `MilestoneDTO`. Never re-derive role/status rules in components.
+- Mutations return the updated `OfferDTO`: `setQueryData(qk.offer(id), offer)`, then invalidate lists, activity, and airwallex-events (plus `qk.wallet` when money settles). Use `qk` from `src/hooks/queryKeys.ts`; no inline key arrays.
+- **No optimistic updates for money actions** (pay, approve, cancel, retry).
+- Pending states (`offer.isPending` / `milestone.isPending`) use `useOfferSync` (sync every 3s, stop after 60s, expose `timedOut`).
+
+## State
+- Server state lives in the Query cache only. Don't copy it into `useState`/context.
+- URL state (tabs, method) in `searchParams`; forms via `react-hook-form` + zod resolver with schemas from `src/contracts`; local UI via `useState`.
+- No Redux/Zustand. A new global store needs a doc update in `docs/14` first.
+
+## Rendering
+- `page.tsx` is a thin server component rendering a client screen from `src/components/screens`. No data fetching in server components.
+- Never import `src/lib/airwallex/*`, `src/server/*`, `src/services/*` (except pure `fees.ts`), or Mongoose models into client code.
+
+## Mocks
+- Mock handlers (`src/lib/api/mock`) must match the contract and state machines, and use `src/contracts/permissions.ts` and `src/services/fees.ts`. Invalid transitions return 409 `INVALID_STATE`.
+- Keep fixtures aligned with `docs/08-seeding.md` personas and offers.
+
+## UI kit
+- Primitives in `src/components/ui` (shadcn/ui, restyled with tokens from `docs/09` §2); domain components in `src/components/domain`; status labels/colors only from `src/components/domain/status.ts`.
+- Every new component, or new variant or state, is added to `/dev/ui-kit` in the same commit.
+- Every data section has loading (skeleton), empty (`EmptyState`), and error (`ErrorState` + retry) states.
+
+## Checkout
+- `@airwallex/components-sdk` only (not `airwallex-payment-elements`). `init({ env: 'demo', enabledElements: ['payments'] })`, mount the Drop-in **before** attaching listeners, and pass only `intent_id`, `client_secret`, and `currency` to the client. In mock mode render `MockCardForm` instead.
+
+## Copy
+- "held in escrow" (funded), "released" (approved), "paid" (settled). Always show the fee split. Label payment screens as sandbox/demo. Buttons name outcome and amount.

@@ -13,7 +13,7 @@ Demo freelance marketplace on a single Airwallex **sandbox** platform account. T
 - Unverified Airwallex behaviour is tracked in `docs/13-open-questions-and-risks.md` (R1–R14). When the spike resolves one, update that file.
 
 ## Stack
-Next.js App Router + TypeScript, MongoDB via Mongoose, Tailwind, zod, `jose` sessions, `@airwallex/components-sdk`. **No Redis** unless a doc change justifies it.
+Next.js App Router + TypeScript, MongoDB via Mongoose, Tailwind v4 + shadcn/ui, TanStack Query, react-hook-form, zod, `jose` sessions, `@airwallex/components-sdk`. **No Redis** and no global client store unless a doc change justifies it.
 
 ## Invariants (never break)
 - Airwallex API calls happen **server-side only**. Never expose `AIRWALLEX_API_KEY` or call Airwallex from client components.
@@ -24,4 +24,6 @@ Next.js App Router + TypeScript, MongoDB via Mongoose, Tailwind, zod, `jose` ses
 - Use deterministic `request_id`s from `src/lib/airwallex/requestIds.ts`.
 
 ## Layering
-`app/` (pages, server actions, route handlers: auth + validate + call service) → `services/` (business rules) → `lib/airwallex`, `models/`. Keep route handlers and actions thin.
+Server: `app/api` route handlers (auth + validate + call service + map DTO via `server/`) → `services/` (business rules) → `lib/airwallex`, `models/`. Keep route handlers thin.
+Client: screens/components → `hooks/` (TanStack Query) → `lib/api` (typed API library; fetch or mock transport). Shared contract: `contracts/` (zod DTOs, inputs, `permissions.ts`).
+UI is built first on the mock transport (`docs/12` Track U). Contract changes update `docs/06` and `src/contracts` in the same commit.

@@ -6,7 +6,9 @@ Guidance for AI coding agents (and humans) working in this repo.
 
 A **demo** freelance escrow marketplace built on a single **Airwallex sandbox** platform account. The seller sends a milestone-based offer, the buyer pays up front, and each milestone's funds are **held** (Funds Split with `auto_release: false`) and **released** only when the buyer approves. Every user gets an Airwallex **connected account** with a wallet. It is not production-ready by design.
 
-Stack: Next.js (App Router, TypeScript), MongoDB (Mongoose), Tailwind, zod, `@airwallex/components-sdk`. No Redis.
+Stack: Next.js (App Router, TypeScript), MongoDB (Mongoose), Tailwind v4 + shadcn/ui, TanStack Query over a typed API library, react-hook-form, zod, `@airwallex/components-sdk`. No Redis, no global client store.
+
+We build **UI-first**: the UI kit and every screen run on an in-memory mock transport (`NEXT_PUBLIC_API_MOCKS=true`) before the backend exists (see `docs/12`, Track U).
 
 ## Read before coding
 
@@ -16,6 +18,9 @@ Stack: Next.js (App Router, TypeScript), MongoDB (Mongoose), Tailwind, zod, `@ai
 | Money flows, fee math, every Airwallex endpoint | `docs/03-airwallex-integration.md` |
 | Schemas and state machines | `docs/04-data-model.md` |
 | Flow-by-flow behaviour | `docs/05-user-flows.md` |
+| REST contract (routes, DTOs, errors, `allowedActions`) | `docs/06-api-routes.md` |
+| API library, React Query hooks, mocks, state management | `docs/14-frontend-architecture.md` |
+| UI kit, design tokens, `/dev/ui-kit`, page specs | `docs/09-ui-pages.md` |
 | Webhooks | `docs/07-webhooks.md` |
 | Demo shortcuts and comment tags | `docs/10-demo-vs-production.md` |
 | Build order | `docs/12-implementation-plan.md` |
