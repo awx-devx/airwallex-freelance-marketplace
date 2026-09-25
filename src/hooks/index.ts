@@ -25,4 +25,4 @@ export {
   useStartCardPayment,
 } from "@/hooks/offers";
 export { usePlatformOverview, usePlatformWebhooks } from "@/hooks/platform";
-export { useWallet, useWalletTransactions } from "@/hooks/wallet";
+export { useSendFunds, useWallet, useWalletTransactions, useWithdraw } from "@/hooks/wallet";

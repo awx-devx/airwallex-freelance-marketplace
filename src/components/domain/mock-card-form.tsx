@@ -21,8 +21,8 @@ export function MockCardForm({
 }: {
   amount: MoneyDTO;
   phase?: Phase;
-  onSuccess?: () => void;
-  onDecline?: () => void;
+  onSuccess?: (cardNumber: string) => void;
+  onDecline?: (cardNumber: string) => void;
 }) {
   const [number, setNumber] = useState("");
   const [phase, setPhase] = useState<Phase>(forcedPhase ?? "idle");
@@ -35,11 +35,11 @@ export function MockCardForm({
     window.setTimeout(() => {
       if (digits === SUCCESS) {
         setPhase("success");
-        onSuccess?.();
+        onSuccess?.(digits);
         return;
       }
       setPhase("declined");
-      onDecline?.();
+      onDecline?.(digits);
     }, 400);
   }
 

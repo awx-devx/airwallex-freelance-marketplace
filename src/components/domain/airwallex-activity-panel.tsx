@@ -10,11 +10,22 @@ import { JsonViewer } from "@/components/ui/json-viewer";
 export function AirwallexActivityPanel({
   events,
   defaultOpen = false,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   events: AirwallexEventDTO[];
   defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen);
+  const open = controlledOpen ?? uncontrolledOpen;
+
+  function toggle() {
+    const next = !open;
+    onOpenChange?.(next);
+    if (controlledOpen === undefined) setUncontrolledOpen(next);
+  }
 
   return (
     <section className="rounded-md border border-border">
@@ -23,10 +34,10 @@ export function AirwallexActivityPanel({
         variant="ghost"
         className="h-auto w-full justify-between rounded-md px-4 py-3"
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
+        onClick={toggle}
       >
         <span>Behind the scenes: Airwallex</span>
-        <span className="text-xs text-muted-foreground">{open ? "Hide" : `${events.length} events`}</span>
+        <span className="text-xs text-muted-foreground">{open ? "Hide" : events.length > 0 ? `${events.length} events` : "Show"}</span>
       </Button>
       {open ? (
         <ul className="flex flex-col gap-3 border-t border-border px-4 py-3">

@@ -9,8 +9,8 @@ export function ActivityTimeline({ items }: { items: ActivityItemDTO[] }) {
 
   return (
     <ol className="flex flex-col gap-4 border-l border-border pl-4">
-      {items.map((item) => (
-        <li key={item.id} className="relative">
+      {items.map((item, index) => (
+        <li key={`${item.id}-${index}`} className="relative">
           <span className="absolute top-1.5 -left-[1.3rem] size-2 rounded-full bg-foreground" aria-hidden />
           <p className="text-sm">
             {item.actor ? <span className="font-medium">{item.actor.name}</span> : null}

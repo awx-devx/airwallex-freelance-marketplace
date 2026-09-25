@@ -1,22 +1,27 @@
 "use client";
 
-import { useFieldArray, useForm } from "react-hook-form";
+import { useFieldArray, useForm, useFormContext, type Control, type UseFormRegister } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
-type Row = { title: string; amount: string };
+type Row = { title: string; amount: string; description?: string; dueDate?: string };
+type MilestoneForm = { milestones: Row[] };
 
-export function MilestoneEditor({
-  defaultRows,
-  max = 10,
-  fieldErrors = {},
+function MilestoneFields({
+  control,
+  register,
+  max,
+  fieldErrors,
+  detailed,
 }: {
-  defaultRows: Row[];
-  max?: number;
-  fieldErrors?: Record<string, string>;
+  control: Control<MilestoneForm>;
+  register: UseFormRegister<MilestoneForm>;
+  max: number;
+  fieldErrors: Record<string, string>;
+  detailed: boolean;
 }) {
-  const form = useForm<{ milestones: Row[] }>({ defaultValues: { milestones: defaultRows } });
-  const fields = useFieldArray({ control: form.control, name: "milestones" });
+  const fields = useFieldArray({ control, name: "milestones" });
   const atMax = fields.fields.length >= max;
 
   return (
@@ -24,19 +29,35 @@ export function MilestoneEditor({
       {fields.fields.map((field, index) => {
         const amountError = fieldErrors[`milestones.${index}.amount`];
         const titleError = fieldErrors[`milestones.${index}.title`];
+        const descriptionError = fieldErrors[`milestones.${index}.description`];
+        const dueError = fieldErrors[`milestones.${index}.dueDate`];
         return (
-          <div key={field.id} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8rem_auto]">
-            <div>
-              <Input aria-label={`Milestone ${index + 1} title`} aria-invalid={Boolean(titleError)} {...form.register(`milestones.${index}.title`)} />
-              {titleError ? <p className="mt-1 text-xs text-danger">{titleError}</p> : null}
+          <div key={field.id} className={detailed ? "flex flex-col gap-2 rounded-md border border-border p-3" : "grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8rem_auto]"}>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8rem_auto]">
+              <div>
+                <Input aria-label={`Milestone ${index + 1} title`} aria-invalid={Boolean(titleError)} {...register(`milestones.${index}.title`)} />
+                {titleError ? <p className="mt-1 text-xs text-danger">{titleError}</p> : null}
+              </div>
+              <div>
+                <Input aria-label={`Milestone ${index + 1} amount`} aria-invalid={Boolean(amountError)} {...register(`milestones.${index}.amount`)} />
+                {amountError ? <p className="mt-1 text-xs text-danger">{amountError}</p> : null}
+              </div>
+              <Button type="button" variant="ghost" size="sm" disabled={fields.fields.length === 1} onClick={() => fields.remove(index)}>
+                Remove
+              </Button>
             </div>
-            <div>
-              <Input aria-label={`Milestone ${index + 1} amount`} aria-invalid={Boolean(amountError)} {...form.register(`milestones.${index}.amount`)} />
-              {amountError ? <p className="mt-1 text-xs text-danger">{amountError}</p> : null}
-            </div>
-            <Button type="button" variant="ghost" size="sm" disabled={fields.fields.length === 1} onClick={() => fields.remove(index)}>
-              Remove
-            </Button>
+            {detailed ? (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_10rem]">
+                <div>
+                  <Textarea aria-label={`Milestone ${index + 1} description`} aria-invalid={Boolean(descriptionError)} {...register(`milestones.${index}.description`)} />
+                  {descriptionError ? <p className="mt-1 text-xs text-danger">{descriptionError}</p> : null}
+                </div>
+                <div>
+                  <Input type="date" aria-label={`Milestone ${index + 1} due date`} aria-invalid={Boolean(dueError)} {...register(`milestones.${index}.dueDate`)} />
+                  {dueError ? <p className="mt-1 text-xs text-danger">{dueError}</p> : null}
+                </div>
+              </div>
+            ) : null}
           </div>
         );
       })}
@@ -45,4 +66,41 @@ export function MilestoneEditor({
       </Button>
     </div>
   );
+}
+
+function StandaloneEditor({
+  defaultRows,
+  max,
+  fieldErrors,
+  detailed,
+}: {
+  defaultRows: Row[];
+  max: number;
+  fieldErrors: Record<string, string>;
+  detailed: boolean;
+}) {
+  const form = useForm<MilestoneForm>({ defaultValues: { milestones: defaultRows } });
+  return <MilestoneFields control={form.control} register={form.register} max={max} fieldErrors={fieldErrors} detailed={detailed} />;
+}
+
+function ConnectedEditor({ max, fieldErrors }: { max: number; fieldErrors: Record<string, string> }) {
+  const form = useFormContext<MilestoneForm>();
+  return <MilestoneFields control={form.control} register={form.register} max={max} fieldErrors={fieldErrors} detailed />;
+}
+
+export function MilestoneEditor({
+  defaultRows = [{ title: "", amount: "" }],
+  max = 10,
+  fieldErrors = {},
+  detailed = false,
+  connected = false,
+}: {
+  defaultRows?: Row[];
+  max?: number;
+  fieldErrors?: Record<string, string>;
+  detailed?: boolean;
+  connected?: boolean;
+}) {
+  if (connected) return <ConnectedEditor max={max} fieldErrors={fieldErrors} />;
+  return <StandaloneEditor defaultRows={defaultRows} max={max} fieldErrors={fieldErrors} detailed={detailed} />;
 }

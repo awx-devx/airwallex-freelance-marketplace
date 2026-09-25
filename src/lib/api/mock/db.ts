@@ -18,6 +18,27 @@ function persist() {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
 }
 
+function bumpIdSeq(id: string) {
+  const match = /_([0-9a-z]+)$/.exec(id);
+  if (!match?.[1]) return;
+  const value = Number.parseInt(match[1], 36);
+  if (!Number.isFinite(value) || value > 1_000_000 || value.toString(36) !== match[1]) return;
+  if (value > idSeq) idSeq = value;
+}
+
+function syncIdSeq(stored: MockDb) {
+  for (const item of stored.activity) bumpIdSeq(item.id);
+  for (const item of stored.events) bumpIdSeq(item.id);
+  for (const item of stored.transactions) bumpIdSeq(item.id);
+  for (const offer of stored.offers) {
+    bumpIdSeq(offer.id);
+    for (const milestone of offer.milestones) {
+      bumpIdSeq(milestone.id);
+      for (const delivery of milestone.deliveries) bumpIdSeq(delivery.id);
+    }
+  }
+}
+
 export function getDb(): MockDb {
   if (db) return db;
   if (canPersist()) {
@@ -25,6 +46,7 @@ export function getDb(): MockDb {
     if (raw) {
       try {
         db = JSON.parse(raw) as MockDb;
+        syncIdSeq(db);
         return db;
       } catch {
         window.localStorage.removeItem(STORAGE_KEY);
@@ -32,6 +54,7 @@ export function getDb(): MockDb {
     }
   }
   db = createSeedDb();
+  syncIdSeq(db);
   return db;
 }
 

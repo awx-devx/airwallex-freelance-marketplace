@@ -7,7 +7,7 @@ export type DemoBannerVariant = "sandbox" | "guest" | "mock";
 
 const COPY: Record<DemoBannerVariant, string> = {
   sandbox: "Sandbox — payments use test card 4035 5010 0000 0008. No real money moves.",
-  guest: "You're signed in as a guest. This account is shared.",
+  guest: "You're exploring as a guest (shared demo account).",
   mock: "Mock data — no backend",
 };
 
@@ -20,8 +20,17 @@ function subscribe(onStoreChange: () => void) {
   };
 }
 
-export function DemoBanner({ variant, dismissible = true }: { variant: DemoBannerVariant; dismissible?: boolean }) {
+export function DemoBanner({
+  variant,
+  name,
+  dismissible = true,
+}: {
+  variant: DemoBannerVariant;
+  name?: string;
+  dismissible?: boolean;
+}) {
   const key = `awx-escrow.banner.${variant}`;
+  const copy = variant === "guest" && name ? `You're exploring as ${name} (shared demo account).` : COPY[variant];
   const dismissed = useSyncExternalStore(
     subscribe,
     () => (dismissible ? window.localStorage.getItem(key) === "1" : false),
@@ -32,7 +41,7 @@ export function DemoBanner({ variant, dismissible = true }: { variant: DemoBanne
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted px-4 py-2 text-sm sm:px-6">
-      <p className="min-w-0">{COPY[variant]}</p>
+      <p className="min-w-0">{copy}</p>
       {dismissible ? (
         <Button
           type="button"
