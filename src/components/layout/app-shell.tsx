@@ -45,18 +45,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         showUiKit={publicConfig.uiKitEnabled}
         onLogout={() => logout.mutate()}
       />
-      <DemoBanner variant={banner} name={user?.isGuest ? user.name : undefined} />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
-        {me.isLoading ? (
-          <div className="flex flex-col gap-3" aria-label="Loading">
-            <Skeleton className="h-10 w-48" />
-            <Skeleton className="h-28 w-full" />
-            <Skeleton className="h-28 w-full" />
-          </div>
-        ) : sessionReady ? (
-          children
-        ) : null}
-      </main>
+      <div className="flex flex-1 flex-col pt-8">
+        <DemoBanner variant={banner} name={user?.isGuest ? user.name : undefined} />
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
+          {me.isLoading ? (
+            <div className="flex flex-col gap-3" aria-label="Loading">
+              <Skeleton className="h-10 w-48" />
+              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-28 w-full" />
+            </div>
+          ) : sessionReady ? (
+            children
+          ) : null}
+        </main>
+      </div>
     </div>
   );
 }

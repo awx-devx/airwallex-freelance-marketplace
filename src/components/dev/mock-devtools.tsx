@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { applyScenario, flushMockWebhooks, getDb, resetMockDb, setMockLatency, setMockUser } from "@/lib/api/mock";
 import { SCENARIOS } from "@/lib/api/mock/scenarios";
@@ -14,19 +14,26 @@ export default function MockDevtools() {
     setVersion((value) => value + 1);
     void qc.invalidateQueries();
   };
+  useEffect(() => {
+    const previous = document.body.style.paddingBottom;
+    document.body.style.paddingBottom = "5rem";
+    return () => {
+      document.body.style.paddingBottom = previous;
+    };
+  }, []);
   const snapshot = getDb();
   const people = snapshot.users.filter((user) => user.kind !== "REVENUE");
 
   if (!open) {
     return (
-      <Button type="button" variant="outline" className="fixed top-4 right-4 z-40" onClick={() => setOpen(true)}>
+      <Button type="button" variant="outline" className="fixed bottom-4 left-4 z-40" onClick={() => setOpen(true)}>
         Mock
       </Button>
     );
   }
 
   return (
-    <aside key={version} className="fixed top-4 right-4 z-40 flex w-72 flex-col gap-3 rounded-md border border-border bg-background p-3 text-sm">
+    <aside key={version} className="fixed bottom-4 left-4 z-40 flex w-[min(18rem,calc(100%-2rem))] flex-col gap-3 rounded-md border border-border bg-background p-3 text-sm">
       <div className="flex items-center justify-between">
         <p className="font-medium">Mock data</p>
         <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>

@@ -52,7 +52,7 @@ Rules:
 - **Money stays on one line** (`whitespace-nowrap` + tabular nums). Long titles truncate with the full text available on hover or in the detail view.
 - **Primary actions stay visible** on a phone (pay, approve, submit delivery, send offer). Secondary actions can move into a menu. Action rows wrap or stack; the main button is full width below `sm` when it sits next to other buttons.
 - **Multi-column pages stack below `lg`.** Create-offer summary, platform balance pair, and the UI-kit sidebar become a single column. Sticky side panels are not sticky on small screens.
-- **Top bar** below `sm`: app name, then icon actions. Wallet amount and "New offer" label can collapse to an icon or into the user menu. Don't let the bar wrap into two crowded rows.
+- **Top bar** below `md`: app name and a menu button. Wallet, New offer, theme, and account actions live in a side panel. The Powered by Airwallex notch stays on the bottom edge at every width. Don't give the bar a second row.
 - **Dialogs** are `w-full` with side margin below `sm`, and a max width on desktop. They must not exceed the viewport, and the body scrolls if the content is tall.
 - **Forms** (milestone editor, delivery links, login) stack fields vertically below `md`. Don't put amount, date, and title on one row on a phone.
 - **Touch targets** for buttons, icon buttons, tabs, and menu items are at least 44px tall below `md`.
@@ -158,7 +158,7 @@ Every component below must appear on the **UI kit demo page** (§4) in all liste
 | Component | Notes |
 | --- | --- |
 | `AppShell` | Top bar + `DemoBanner` + content container; handles client-side auth/provisioning redirects |
-| `TopBar` | App name, `WalletChip`, **New offer**, user `DropdownMenu` (Wallet, Platform, UI kit in dev, Log out) |
+| `TopBar` | Sticky. From `md`: app name, `WalletChip`, **New offer**, theme toggle, user `DropdownMenu` (Wallet, Platform, UI kit in dev, Log out). Below `md`: app name and a menu button. The panel holds New offer, Wallet (with the balance), Platform, UI kit in dev, the theme toggle, and Log out. A centered **Powered by Airwallex** tab hangs below the bar at every width, with square corners so it clears the controls |
 | `DemoBanner` | Sandbox notice + test card; guest variant; mock-mode variant ("Mock data — no backend") |
 | `PageHeader` | Title, subtitle, right-side actions, optional back link |
 | `Section` | Titled group with optional count and action |
@@ -217,7 +217,7 @@ Each page is a thin `page.tsx` that renders a client **screen** component. Stand
 ### `/login` — `LoginScreen` (public)
 - **Data:** `useDemoAccounts()`, `usePublicConfig()`
 - **Mutations:** `useLogin()`, `useGuestLogin()`
-- **UI:** email/password form (RHF), big secondary **Continue as guest**, a "Demo accounts" list (`UserChip`, role, **Log in as**, password `demo1234` shown), link to sign up.
+- **UI:** email/password form (RHF), big secondary **Continue as guest**, then a link to sign up. Below that, a "Demo accounts" list (`UserChip`, role, **Log in as**, password `demo1234` shown).
 - **Errors:** `INVALID_CREDENTIALS` shown inline under the form.
 
 ### `/signup` — `SignupScreen` (public)

@@ -50,6 +50,13 @@ export function LoginScreen() {
         Continue as guest
       </Button>
 
+      <p className="text-sm text-muted-foreground">
+        New here?{" "}
+        <Link href="/signup" className="text-foreground underline underline-offset-4">
+          Create an account
+        </Link>
+      </p>
+
       <section className="flex flex-col gap-3">
         <h2 className="font-serif text-2xl font-medium tracking-tight">Demo accounts</h2>
         <p className="text-sm text-muted-foreground">
@@ -79,13 +86,6 @@ export function LoginScreen() {
           </ul>
         )}
       </section>
-
-      <p className="text-sm text-muted-foreground">
-        New here?{" "}
-        <Link href="/signup" className="text-foreground underline underline-offset-4">
-          Create an account
-        </Link>
-      </p>
     </div>
   );
 }

@@ -13,8 +13,8 @@ export function LayoutSection() {
     <>
       <KitSection id="app-shell" title="AppShell" note="Top bar, banner, and the content column. Redirects stay off on this page.">
         <Variant caption="AppShell / preview" className="@min-[720px]:col-span-2">
-          <div className="overflow-hidden rounded-md border border-border bg-surface">
-            <TopBar user={maya} balance={sampleBalance} showUiKit onLogout={() => undefined} />
+          <div className="overflow-visible rounded-md border border-border bg-surface pb-8">
+            <TopBar user={maya} balance={sampleBalance} showUiKit pinned={false} onLogout={() => undefined} />
             <DemoBanner variant="mock" dismissible={false} />
             <div className="px-6 py-6">
               <PageHeader title="Hi Maya" subtitle="Your offers" />
@@ -22,12 +22,12 @@ export function LayoutSection() {
           </div>
         </Variant>
       </KitSection>
-      <KitSection id="top-bar" title="TopBar" note="Wordmark, wallet, new offer, and the account menu.">
+      <KitSection id="top-bar" title="TopBar" note="One row, with the Airwallex notch on the bottom edge. Below md a menu button opens the side panel.">
         <Variant caption="TopBar / signed in" className="@min-[720px]:col-span-2">
-          <TopBar user={maya} balance={sampleBalance} showUiKit onLogout={() => undefined} />
+          <TopBar user={maya} balance={sampleBalance} showUiKit pinned={false} onLogout={() => undefined} />
         </Variant>
         <Variant caption="TopBar / balance loading" className="@min-[720px]:col-span-2">
-          <TopBar user={maya} balanceLoading onLogout={() => undefined} />
+          <TopBar user={maya} balanceLoading pinned={false} onLogout={() => undefined} />
         </Variant>
       </KitSection>
       <KitSection id="demo-banner" title="DemoBanner" note="Sandbox, guest, and mock-data notices.">

@@ -7,11 +7,13 @@ export function UserChip({
   subtitle,
   size = "sm",
   className,
+  labelClassName,
 }: {
   user: UserSummaryDTO;
   subtitle?: string;
   size?: "sm" | "md";
   className?: string;
+  labelClassName?: string;
 }) {
   const line = subtitle ?? user.headline;
 
@@ -22,7 +24,7 @@ export function UserChip({
           {user.initials}
         </AvatarFallback>
       </Avatar>
-      <span className="min-w-0">
+      <span className={cn("min-w-0", labelClassName)}>
         <span className="block truncate text-sm font-medium">{user.name}</span>
         {line ? <span className="block truncate text-xs text-muted-foreground">{line}</span> : null}
       </span>
