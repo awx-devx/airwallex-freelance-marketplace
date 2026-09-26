@@ -10,6 +10,8 @@ This document is the contract shared by three parties, all of which must agree:
 
 DTO types and request schemas live in **`src/contracts/*.ts`** as zod schemas with inferred types. They are imported by all three and are the single source of truth. If this doc and `src/contracts` disagree, fix both in the same commit.
 
+**Frozen at U6 (2026-09-26).** The screens, mock handlers, and `src/contracts` agree with the routes below. A later change updates this doc, `src/contracts`, and the mocks in the same commit.
+
 ## Conventions
 
 | Topic | Rule |

@@ -119,7 +119,7 @@ export function HomeScreen() {
   return (
     <div className="flex flex-col gap-8">
       <PageHeader title={`Hi ${firstName}`} subtitle="Offers waiting on you, and the contracts you're already in." />
-      <div className="md:hidden">
+      <div className="lg:hidden">
         <Tabs value={tab} onValueChange={selectTab}>
           <TabsList className="w-full">
             {TABS.map((item) => (
@@ -135,7 +135,7 @@ export function HomeScreen() {
           ))}
         </Tabs>
       </div>
-      <div className="hidden flex-col gap-10 md:flex">
+      <div className="hidden flex-col gap-10 lg:flex">
         {sections.incoming}
         {sections.buying}
         {sections.selling}

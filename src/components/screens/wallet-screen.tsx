@@ -142,7 +142,9 @@ export function WalletScreen() {
         </dl>
       </section>
       <Section title="Transactions">
-        {transactions.isError ? (
+        {transactions.isLoading ? (
+          <Skeleton className="h-24 w-full" aria-label="Loading transactions" />
+        ) : transactions.isError ? (
           <ErrorState message="Couldn't load transactions." onRetry={() => transactions.refetch()} />
         ) : (
           <TransactionList

@@ -1,5 +1,7 @@
+import type { MoneyDTO } from "@/contracts/common";
 import type { OfferAction, OfferDTO } from "@/contracts/offers";
 import { Button } from "@/components/ui/button";
+import { formatMoney } from "@/lib/money";
 
 const LABELS: Record<OfferAction, string> = {
   ACCEPT_AND_PAY: "Accept & pay",
@@ -10,12 +12,18 @@ const LABELS: Record<OfferAction, string> = {
   CANCEL_REMAINING: "Cancel remaining",
 };
 
+function label(action: OfferAction, total?: MoneyDTO) {
+  const text = LABELS[action];
+  if (!total || (action !== "ACCEPT_AND_PAY" && action !== "CONTINUE_PAYMENT")) return text;
+  return `${text} ${formatMoney(total.amountMinor, total.currency)}`;
+}
+
 export function OfferActionBar({
   offer,
   pendingAction,
   onAction,
 }: {
-  offer: Pick<OfferDTO, "allowedActions">;
+  offer: Pick<OfferDTO, "allowedActions"> & { total?: MoneyDTO };
   pendingAction?: OfferAction;
   onAction?: (action: OfferAction) => void;
 }) {
@@ -36,7 +44,7 @@ export function OfferActionBar({
             loading={pendingAction === action}
             onClick={() => onAction?.(action)}
           >
-            {LABELS[action]}
+            {label(action, offer.total)}
           </Button>
         );
       })}

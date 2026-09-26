@@ -11,6 +11,7 @@ import { Money } from "@/components/domain/money";
 import { UserPicker } from "@/components/domain/user-picker";
 import { PageHeader } from "@/components/layout/page-header";
 import { applyApiFieldErrors } from "@/components/screens/form-errors";
+import { ApiError } from "@/lib/api/errors";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -137,11 +138,16 @@ export function CreateOfferScreen() {
               <MilestoneEditor connected max={config.data?.maxMilestones ?? 10} fieldErrors={milestoneFieldErrors(form.formState.errors)} />
               {listMessage ? <p className="text-sm text-danger">{listMessage}</p> : null}
             </div>
+            {create.error instanceof ApiError && !create.error.fieldErrors ? (
+              <p className="text-sm text-danger" role="alert">
+                {create.error.message}
+              </p>
+            ) : null}
             <Button type="submit" variant="primary" className="w-fit" loading={create.isPending}>
               Send offer
             </Button>
           </div>
-          <aside className="flex flex-col gap-3 rounded-md border border-border bg-card p-5 lg:sticky lg:top-6">
+          <aside className="flex flex-col gap-3 rounded-md border border-border bg-card p-5 lg:sticky lg:top-28">
             <div>
               <p className="text-xs text-muted-foreground">Buyer pays</p>
               <Money value={fees?.total ?? { amountMinor: 0, currency: config.data?.currency ?? "USD" }} />

@@ -122,8 +122,12 @@ export function PlatformScreen() {
         )}
       </Section>
       <Section title="Webhooks">
-        {webhooks.isError ? (
+        {webhooks.isLoading ? (
+          <Skeleton className="h-24 w-full" aria-label="Loading webhooks" />
+        ) : webhooks.isError ? (
           <ErrorState message="Couldn't load webhooks." onRetry={() => webhooks.refetch()} />
+        ) : (webhooks.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">No webhook events yet.</p>
         ) : (
           <Table>
             <TableHeader>

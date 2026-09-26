@@ -80,6 +80,8 @@ Build every page from [09 §5](./09-ui-pages.md#5-pages) against hooks + mocks, 
 
 ### U6 — Polish + contract freeze
 
+Contract frozen in [06](./06-api-routes.md) on 2026-09-26. The routes the UI calls match `src/lib/api` and `src/contracts`.
+
 - Loading/empty/error states everywhere; keyboard and focus pass; responsiveness pass at 375, 768, and 1024 ([09](./09-ui-pages.md#responsiveness)); light and dark theme switch with a full dark token set ([09](./09-ui-pages.md#themes)); copy pass ([09 §6](./09-ui-pages.md#6-copy-guidelines)).
 - Review [06](./06-api-routes.md) against what the UI actually needed. Update `src/contracts` + docs for any change, then **freeze** the contract. After this, contract changes need a doc update in the same commit.
 - Optional: deploy a **UI preview** (Vercel, `NEXT_PUBLIC_API_MOCKS=true`, `ALLOW_MOCKS_IN_PROD=true`) to share the look and feel.

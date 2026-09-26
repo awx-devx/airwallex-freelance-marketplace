@@ -8,6 +8,7 @@ import { UserChip } from "@/components/domain/user-chip";
 import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
+import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDemoAccounts, useGuestLogin, useLogin } from "@/hooks/session";
 import { ApiError } from "@/lib/api/errors";
@@ -67,6 +68,8 @@ export function LoginScreen() {
             <Skeleton className="h-14 w-full" />
             <Skeleton className="h-14 w-full" />
           </div>
+        ) : accounts.isError ? (
+          <ErrorState message="Couldn't load demo accounts." onRetry={() => accounts.refetch()} />
         ) : (
           <ul className="flex flex-col gap-2">
             {(accounts.data ?? []).map((account) => (
