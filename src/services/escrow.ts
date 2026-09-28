@@ -1,8 +1,11 @@
 import { Types } from "mongoose";
-import { milestoneActions } from "@/contracts/permissions";
+import { offerActions, milestoneActions } from "@/contracts/permissions";
+import type { CancelReasonInput } from "@/contracts/offers";
+import { AirwallexError } from "@/lib/airwallex/errors";
+import { createFundsSplit, createFundsSplitReversal, releaseFundsSplit, retrieveFundsSplit, type CreateFundsSplitInput, type CreateReversalInput } from "@/lib/airwallex/fundsSplits";
 import { readString, type JsonObject } from "@/lib/airwallex/json";
-import { createFundsSplit, releaseFundsSplit, retrieveFundsSplit, type CreateFundsSplitInput } from "@/lib/airwallex/fundsSplits";
-import { releaseSplitRequestId, revenueSplitRequestId, sellerSplitRequestId } from "@/lib/airwallex/requestIds";
+import { createRefund, retrieveRefund, type CreateRefundInput } from "@/lib/airwallex/refunds";
+import { refundRequestId, releaseSplitRequestId, revenueSplitRequestId, reverseSplitRequestId, sellerSplitRequestId } from "@/lib/airwallex/requestIds";
 import { connectDb } from "@/lib/db";
 import { Activity } from "@/models/activity";
 import { Offer, type OfferDocument } from "@/models/offer";
@@ -27,6 +30,18 @@ export type ReleaseGateway = {
 };
 
 const liveRelease: ReleaseGateway = { releaseFundsSplit };
+
+export type RefundGateway = {
+  createRefund: (input: CreateRefundInput) => Promise<JsonObject>;
+  createFundsSplitReversal: (input: CreateReversalInput) => Promise<JsonObject>;
+  retrieveRefund: (refundId: string) => Promise<JsonObject>;
+};
+
+const liveRefund: RefundGateway = { createRefund, createFundsSplitReversal, retrieveRefund };
+
+const REFUNDABLE = new Set(["FUNDED", "SUBMITTED", "CHANGES_REQUESTED"]);
+const REFUND_RANK: Record<string, number> = { RECEIVED: 1, ACCEPTED: 2, SETTLED: 3 };
+const REFUND_STATUSES = new Set(["RECEIVED", "ACCEPTED", "SETTLED", "FAILED"]);
 
 export function canAdvanceSplit(current: string, next: string): boolean {
   if (!SPLIT_STATUSES.has(next) || current === next) return false;
@@ -272,17 +287,7 @@ export async function maybeMarkPaid(offerId: string): Promise<void> {
     );
     if (paid) await note(offerId, "MILESTONE_PAID", `${milestone.title} paid`, undefined, milestone._id.toString());
   }
-
-  const current = await Offer.findById(offerId);
-  if (!current || current.status !== "ACTIVE") return;
-  const statuses = current.milestones.map((milestone) => milestone.status);
-  const terminal = statuses.every((status) => status === "PAID" || status === "REFUNDED");
-  if (!terminal || !statuses.includes("PAID")) return;
-  const completed = await Offer.findOneAndUpdate(
-    { _id: offerId, status: "ACTIVE" },
-    { $set: { status: "COMPLETED", completedAt: new Date() } },
-  );
-  if (completed) await note(offerId, "OFFER_COMPLETED", "Offer completed");
+  await closeOffer(offerId);
 }
 
 async function releaseHeldSplits(offerId: string, milestoneId: string, gateway: ReleaseGateway): Promise<void> {
@@ -356,6 +361,7 @@ export async function retryMilestone(
   offerId: string,
   milestoneId: string,
   gateway: ReleaseGateway = liveRelease,
+  refund: RefundGateway = liveRefund,
 ) {
   const offer = await loadParticipant(offerId, user._id.toString());
   const milestone = milestoneOf(offer, milestoneId);
@@ -363,7 +369,16 @@ export async function retryMilestone(
     throw new InvalidState("That action isn't available.");
   }
   if (milestone.status === "REFUND_FAILED" || milestone.status === "REFUNDING") {
-    throw new InvalidState("Refund retry isn't available yet.");
+    const claimed = await Offer.findOneAndUpdate(
+      {
+        _id: offer._id,
+        milestones: { $elemMatch: { _id: milestone._id, status: { $in: ["REFUNDING", "REFUND_FAILED"] } } },
+      },
+      { $set: { "milestones.$.status": "REFUNDING" }, $unset: { "milestones.$.lastError": "" } },
+    );
+    if (!claimed) throw new InvalidState("That action isn't available.");
+    await executeRefund(offer._id.toString(), milestone._id.toString(), refund);
+    return getOffer(user, offerId);
   }
   const claimed = await Offer.findOneAndUpdate(
     {
@@ -375,4 +390,255 @@ export async function retryMilestone(
   if (!claimed) throw new InvalidState("That action isn't available.");
   await releaseHeldSplits(offerId, milestoneId, gateway);
   return getOffer(user, offerId);
+}
+
+async function closeOffer(offerId: string): Promise<void> {
+  const current = await Offer.findById(offerId);
+  if (!current || current.status !== "ACTIVE") return;
+  const statuses = current.milestones.map((milestone) => milestone.status);
+  if (!statuses.every((status) => status === "PAID" || status === "REFUNDED")) return;
+  if (statuses.every((status) => status === "REFUNDED")) {
+    const cancelled = await Offer.findOneAndUpdate(
+      { _id: offerId, status: "ACTIVE" },
+      { $set: { status: "CANCELLED", closedAt: new Date() } },
+    );
+    if (cancelled) await note(offerId, "OFFER_CANCELLED", "Offer cancelled");
+    return;
+  }
+  const completed = await Offer.findOneAndUpdate(
+    { _id: offerId, status: "ACTIVE" },
+    { $set: { status: "COMPLETED", completedAt: new Date() } },
+  );
+  if (completed) await note(offerId, "OFFER_COMPLETED", "Offer completed");
+}
+
+function knownRefundStatus(value: string | undefined): "RECEIVED" | "ACCEPTED" | "SETTLED" | "FAILED" | undefined {
+  if (value && REFUND_STATUSES.has(value)) return value as "RECEIVED" | "ACCEPTED" | "SETTLED" | "FAILED";
+  return undefined;
+}
+
+function canAdvanceRefund(current: string, next: string): boolean {
+  if (!REFUND_STATUSES.has(next) || current === next) return false;
+  if (next === "FAILED") return current === "RECEIVED" || current === "ACCEPTED";
+  return (REFUND_RANK[next] ?? 0) > (REFUND_RANK[current] ?? 0);
+}
+
+function reversalIsOptional(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : "";
+  const code = error instanceof AirwallexError ? error.code : "";
+  return `${code} ${message}`.toLowerCase().includes("insufficient");
+}
+
+async function markRefunded(offerId: string, milestoneId: Types.ObjectId, title: string): Promise<void> {
+  const updated = await Offer.findOneAndUpdate(
+    { _id: offerId, milestones: { $elemMatch: { _id: milestoneId, status: "REFUNDING" } } },
+    { $set: { "milestones.$.status": "REFUNDED", "milestones.$.refundedAt": new Date() }, $unset: { "milestones.$.lastError": "" } },
+  );
+  if (updated) await note(offerId, "MILESTONE_REFUNDED", `${title} refunded`, undefined, milestoneId.toString());
+  await closeOffer(offerId);
+}
+
+async function markRefundFailed(offerId: string, milestoneId: Types.ObjectId, message: string): Promise<void> {
+  await Offer.updateOne(
+    { _id: offerId, milestones: { $elemMatch: { _id: milestoneId, status: "REFUNDING" } } },
+    { $set: { "milestones.$.status": "REFUND_FAILED", "milestones.$.lastError": message } },
+  );
+}
+
+async function attachRefund(
+  offerId: string,
+  milestoneId: Types.ObjectId,
+  refundId: string,
+  status: string,
+  amountMinor: number,
+): Promise<void> {
+  const attached = await Offer.findOneAndUpdate(
+    {
+      _id: offerId,
+      milestones: { $elemMatch: { _id: milestoneId, status: "REFUNDING", "escrow.refund.refundId": { $exists: false } } },
+    },
+    { $set: { "milestones.$.escrow.refund": { refundId, status } } },
+  );
+  if (!attached) return;
+  const payment = await Payment.findOne({ offerId, rail: "CARD", status: "SUCCEEDED" }).sort({ attempt: -1 });
+  if (payment) await Payment.updateOne({ _id: payment._id }, { $inc: { refundedMinor: amountMinor } });
+}
+
+/** Update a stored refund. Accepted or settled refunds pay the milestone out. */
+export async function advanceRefundStatus(refundId: string, next: string, milestoneId?: string): Promise<string | undefined> {
+  await connectDb();
+  const status = knownRefundStatus(next);
+  if (!status) return undefined;
+  let offer = await Offer.findOne({ "milestones.escrow.refund.refundId": refundId });
+  if (!offer && milestoneId && Types.ObjectId.isValid(milestoneId)) {
+    offer = await Offer.findOne({ "milestones._id": milestoneId });
+  }
+  if (!offer) return undefined;
+  const milestone = offer.milestones.find(
+    (item) => item.escrow?.refund?.refundId === refundId || (milestoneId !== undefined && item._id.toString() === milestoneId),
+  );
+  if (!milestone) return offer._id.toString();
+  if (!milestone.escrow?.refund?.refundId) {
+    await attachRefund(offer._id.toString(), milestone._id, refundId, status, milestone.amountMinor);
+  } else if (canAdvanceRefund(milestone.escrow.refund.status, status)) {
+    await Offer.updateOne(
+      {
+        _id: offer._id,
+        milestones: { $elemMatch: { "escrow.refund.refundId": refundId, "escrow.refund.status": milestone.escrow.refund.status } },
+      },
+      { $set: { "milestones.$.escrow.refund.status": status } },
+    );
+  }
+  if (status === "FAILED") await markRefundFailed(offer._id.toString(), milestone._id, "The refund failed.");
+  if (status === "ACCEPTED" || status === "SETTLED") await markRefunded(offer._id.toString(), milestone._id, milestone.title);
+  return offer._id.toString();
+}
+
+async function reverseSplit(
+  offerId: string,
+  milestoneId: Types.ObjectId,
+  side: "sellerSplit" | "revenueSplit",
+  split: { splitId: string; amountMinor: number },
+  currency: string,
+  gateway: RefundGateway,
+): Promise<void> {
+  try {
+    const reversal = await gateway.createFundsSplitReversal({
+      fundsSplitId: split.splitId,
+      amountMinor: split.amountMinor,
+      currency,
+      requestId: reverseSplitRequestId(split.splitId),
+    });
+    const reversalId = readString(reversal, "id");
+    if (!reversalId) return;
+    await Offer.updateOne(
+      { _id: offerId, milestones: { $elemMatch: { _id: milestoneId, [`escrow.${side}.splitId`]: split.splitId } } },
+      {
+        $set: {
+          [`milestones.$.escrow.${side}.reversalId`]: reversalId,
+          [`milestones.$.escrow.${side}.reversalStatus`]: readString(reversal, "status") ?? "RECEIVED",
+        },
+      },
+    );
+  } catch (error) {
+    // AIRWALLEX: reversing a split that has not settled returns insufficient funds while the destination balance is still 0 (R7). The card refund still proceeds.
+    if (!reversalIsOptional(error)) throw error;
+  }
+}
+
+async function executeRefund(offerId: string, milestoneId: string, gateway: RefundGateway): Promise<void> {
+  const offer = await Offer.findById(offerId);
+  const milestone = offer?.milestones.find((item) => item._id.toString() === milestoneId);
+  if (!offer || !milestone) return;
+  try {
+    const payment = await Payment.findOne({ offerId: offer._id, rail: "CARD", status: "SUCCEEDED" }).sort({ attempt: -1 });
+    if (!payment?.paymentIntentId) throw new Error("This offer has no card payment to refund.");
+    const created = await gateway.createRefund({
+      paymentIntentId: payment.paymentIntentId,
+      amountMinor: milestone.amountMinor,
+      currency: offer.currency,
+      requestId: refundRequestId(milestoneId),
+      reason: "Milestone cancelled",
+      metadata: { offerId, milestoneId },
+      relatedMilestoneId: milestoneId,
+    });
+    const refundId = readString(created, "id");
+    if (!refundId) throw new Error("Refund did not return an id.");
+    const status = readString(created, "status") ?? "RECEIVED";
+    await attachRefund(offerId, milestone._id, refundId, status, milestone.amountMinor);
+    for (const [side, split] of [
+      ["sellerSplit", milestone.escrow?.sellerSplit],
+      ["revenueSplit", milestone.escrow?.revenueSplit],
+    ] as const) {
+      if (!split) continue;
+      await reverseSplit(offerId, milestone._id, side, split, offer.currency, gateway);
+    }
+    await advanceRefundStatus(refundId, status, milestoneId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Refund failed.";
+    await Offer.updateOne(
+      { _id: offerId, milestones: { $elemMatch: { _id: milestone._id, status: "REFUNDING" } } },
+      { $set: { "milestones.$.lastError": message } },
+    );
+  }
+}
+
+async function claimRefund(offer: OfferDocument, milestoneId: Types.ObjectId): Promise<boolean> {
+  const claimed = await Offer.findOneAndUpdate(
+    {
+      _id: offer._id,
+      status: "ACTIVE",
+      milestones: { $elemMatch: { _id: milestoneId, status: { $in: [...REFUNDABLE] } } },
+    },
+    { $set: { "milestones.$.status": "REFUNDING" }, $unset: { "milestones.$.lastError": "" } },
+  );
+  return Boolean(claimed);
+}
+
+export async function refundMilestone(
+  user: UserDocument,
+  offerId: string,
+  milestoneId: string,
+  input: CancelReasonInput = {},
+  gateway: RefundGateway = liveRefund,
+) {
+  const offer = await loadParticipant(offerId, user._id.toString());
+  const milestone = milestoneOf(offer, milestoneId);
+  if (!milestoneActions(milestone, offer, viewerRole(offer, user._id.toString())).includes("CANCEL")) {
+    throw new InvalidState("That action isn't available.");
+  }
+  if (offer.fundingRail !== "CARD") throw new InvalidState("Wallet refunds aren't available yet.");
+  const claimed = await claimRefund(offer, milestone._id);
+  if (!claimed) throw new InvalidState("That action isn't available.");
+  const reason = input.reason?.trim();
+  await note(
+    offerId,
+    "MILESTONE_CANCELLED",
+    reason ? `${user.name} cancelled ${milestone.title}: ${reason}` : `${user.name} cancelled ${milestone.title}`,
+    user._id.toString(),
+    milestoneId,
+  );
+  await executeRefund(offerId, milestoneId, gateway);
+  return getOffer(user, offerId);
+}
+
+export async function cancelRemaining(
+  user: UserDocument,
+  offerId: string,
+  input: CancelReasonInput = {},
+  gateway: RefundGateway = liveRefund,
+) {
+  const offer = await loadParticipant(offerId, user._id.toString());
+  if (!offerActions(offer, viewerRole(offer, user._id.toString())).includes("CANCEL_REMAINING")) {
+    throw new InvalidState("That action isn't available.");
+  }
+  if (offer.fundingRail !== "CARD") throw new InvalidState("Wallet refunds aren't available yet.");
+  const reason = input.reason?.trim();
+  const current = await Offer.findById(offer._id);
+  for (const milestone of current?.milestones ?? []) {
+    if (!REFUNDABLE.has(milestone.status)) continue;
+    const claimed = await claimRefund(offer, milestone._id);
+    if (!claimed) continue;
+    await note(
+      offerId,
+      "MILESTONE_CANCELLED",
+      reason ? `${user.name} cancelled ${milestone.title}: ${reason}` : `${user.name} cancelled ${milestone.title}`,
+      user._id.toString(),
+      milestone._id.toString(),
+    );
+    await executeRefund(offerId, milestone._id.toString(), gateway);
+  }
+  return getOffer(user, offerId);
+}
+
+export async function refreshRefunds(offerId: string, gateway: RefundGateway = liveRefund): Promise<void> {
+  const offer = await Offer.findById(offerId);
+  if (!offer) return;
+  for (const milestone of offer.milestones) {
+    const refundId = milestone.escrow?.refund?.refundId;
+    if (!refundId || milestone.status !== "REFUNDING") continue;
+    const latest = await gateway.retrieveRefund(refundId);
+    const status = readString(latest, "status");
+    if (status) await advanceRefundStatus(refundId, status, milestone._id.toString());
+  }
 }

@@ -4,6 +4,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { MongoMemoryServer } from "mongodb-memory-server";
 import type { JsonObject } from "@/lib/airwallex/json";
+import type { CreateRefundInput } from "@/lib/airwallex/refunds";
 import { resetServerConfigCache } from "@/lib/config";
 import { connectDb, disconnectDb } from "@/lib/db";
 import { Activity } from "@/models/activity";
@@ -12,7 +13,7 @@ import { Payment } from "@/models/payment";
 import { PlatformSettings } from "@/models/platformSettings";
 import { User, type UserDocument } from "@/models/user";
 import { InvalidState } from "@/server/errors";
-import { approveMilestone, retryMilestone, type ReleaseGateway, type SplitGateway } from "@/services/escrow";
+import { approveMilestone, cancelRemaining, refundMilestone, retryMilestone, type RefundGateway, type ReleaseGateway, type SplitGateway } from "@/services/escrow";
 import { startCardPayment, reconcileCardPayment, type CardGateway } from "@/services/funding";
 import { createAndSend, submitDelivery } from "@/services/offers";
 import { dispatchWebhook } from "@/services/webhookHandlers";
@@ -196,5 +197,79 @@ describe("approval and release", () => {
     const failed = await Offer.findById(offerId);
     expect(failed?.milestones[0]?.status).toBe("RELEASE_FAILED");
     expect(failed?.milestones[0]?.lastError).toMatch(/could not release/);
+  });
+});
+
+function cardRefunds(failCreate = false): RefundGateway & { reversals: number } {
+  const gateway = {
+    reversals: 0,
+    async createRefund(input: CreateRefundInput) {
+      if (failCreate) throw new Error("Airwallex timed out");
+      return { id: `rfd_${input.metadata?.milestoneId ?? "x"}`, status: "RECEIVED" } satisfies JsonObject;
+    },
+    async createFundsSplitReversal() {
+      gateway.reversals += 1;
+      throw new Error("Insufficient funds in USD currency.");
+    },
+    async retrieveRefund(refundId: string) {
+      return { id: refundId, status: "ACCEPTED" } satisfies JsonObject;
+    },
+  };
+  return gateway;
+}
+
+describe("cancellation and refunds", () => {
+  it("refunds an unreleased milestone even when the split reversal has no funds", async () => {
+    const { seller, buyer, offerId } = await fundedOffer();
+    const funded = await Offer.findById(offerId);
+    const first = funded?.milestones[0];
+    const second = funded?.milestones[1];
+    if (!first || !second) throw new Error("missing milestones");
+    const gateway = cardRefunds();
+
+    const refunding = await refundMilestone(seller, offerId, first._id.toString(), { reason: "Scope changed" }, gateway);
+    expect(refunding.milestones[0]?.status).toBe("REFUNDING");
+    expect(refunding.milestones[0]?.escrowLegs.some((leg) => leg.kind === "REFUND" && leg.airwallexId === `rfd_${first._id.toString()}`)).toBe(true);
+    expect(gateway.reversals).toBe(2);
+    expect(refunding.status).toBe("ACTIVE");
+    const payment = await Payment.findOne({ offerId });
+    expect(payment?.refundedMinor).toBe(10_000);
+
+    await dispatchWebhook({
+      id: "evt_refund_1",
+      name: "refund.accepted",
+      data: { object: { id: `rfd_${first._id.toString()}`, status: "ACCEPTED", metadata: { milestoneId: first._id.toString() } } },
+    });
+    const halfway = await Offer.findById(offerId);
+    expect(halfway?.milestones[0]?.status).toBe("REFUNDED");
+    expect(halfway?.status).toBe("ACTIVE");
+
+    const remaining = await cancelRemaining(buyer, offerId, {}, gateway);
+    expect(remaining.milestones[1]?.status).toBe("REFUNDING");
+    await dispatchWebhook({
+      id: "evt_refund_2",
+      name: "refund.settled",
+      data: { object: { id: `rfd_${second._id.toString()}`, status: "SETTLED" } },
+    });
+    const cancelled = await Offer.findById(offerId);
+    expect(cancelled?.milestones.map((milestone) => milestone.status)).toEqual(["REFUNDED", "REFUNDED"]);
+    expect(cancelled?.status).toBe("CANCELLED");
+    await expect(refundMilestone(buyer, offerId, second._id.toString(), {}, gateway)).rejects.toBeInstanceOf(InvalidState);
+  });
+
+  it("keeps a failed refund retryable", async () => {
+    const { buyer, offerId } = await fundedOffer();
+    const funded = await Offer.findById(offerId);
+    const first = funded?.milestones[0];
+    if (!first) throw new Error("missing milestone");
+    const stuck = await refundMilestone(buyer, offerId, first._id.toString(), {}, cardRefunds(true));
+    expect(stuck.milestones[0]?.status).toBe("REFUNDING");
+    expect(stuck.milestones[0]?.lastError).toBe("Airwallex timed out");
+    expect(stuck.milestones[0]?.allowedActions).toContain("RETRY");
+
+    const recovered = await retryMilestone(buyer, offerId, first._id.toString(), undefined, cardRefunds());
+    expect(recovered.milestones[0]?.status).toBe("REFUNDING");
+    expect(recovered.milestones[0]?.lastError).toBeUndefined();
+    expect(recovered.milestones[0]?.escrowLegs.some((leg) => leg.kind === "REFUND")).toBe(true);
   });
 });

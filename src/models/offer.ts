@@ -113,6 +113,7 @@ OfferSchema.index({ buyerId: 1, status: 1, createdAt: -1 });
 OfferSchema.index({ sellerId: 1, status: 1, createdAt: -1 });
 OfferSchema.index({ "milestones.escrow.sellerSplit.splitId": 1 }, { sparse: true });
 OfferSchema.index({ "milestones.escrow.revenueSplit.splitId": 1 }, { sparse: true });
+OfferSchema.index({ "milestones.escrow.refund.refundId": 1 }, { sparse: true });
 OfferSchema.index({ seedKey: 1 }, { unique: true, sparse: true });
 
 export type OfferDocument = {

@@ -3,7 +3,7 @@ import { extractAccountId, extractObject } from "@/lib/airwallex/webhooks";
 import { connectDb } from "@/lib/db";
 import { Payment } from "@/models/payment";
 import { User } from "@/models/user";
-import { advanceSplitStatus, markCardPaymentFailed, onFundingSucceeded, type SplitGateway } from "@/services/escrow";
+import { advanceRefundStatus, advanceSplitStatus, markCardPaymentFailed, onFundingSucceeded, type SplitGateway } from "@/services/escrow";
 
 const ACCOUNT_STATUS = {
   "account.active": "ACTIVE",
@@ -21,6 +21,14 @@ function metadata(object: unknown): Record<string, unknown> | undefined {
 function metaString(object: unknown, key: string): string | undefined {
   const value = metadata(object)?.[key];
   return typeof value === "string" ? value : undefined;
+}
+
+function refundStatusFromName(name: string): string | undefined {
+  if (name === "refund.received") return "RECEIVED";
+  if (name === "refund.accepted") return "ACCEPTED";
+  if (name === "refund.settled") return "SETTLED";
+  if (name === "refund.failed") return "FAILED";
+  return undefined;
 }
 
 function splitStatusFromName(name: string): string | undefined {
@@ -49,6 +57,15 @@ export async function dispatchWebhook(event: unknown, splits?: SplitGateway): Pr
   if (name === "payment_intent.payment_failed" || name === "payment_intent.cancelled") {
     if (!objectId) return offerId;
     return (await markCardPaymentFailed(objectId, name.endsWith("cancelled") ? "CANCELLED" : "FAILED")) ?? offerId;
+  }
+
+  if (name.startsWith("refund.")) {
+    const status = readString(object, "status") ?? refundStatusFromName(name);
+    const milestoneId = metaString(object, "milestoneId");
+    if (objectId && status) {
+      return (await advanceRefundStatus(objectId, status, milestoneId)) ?? offerId;
+    }
+    return offerId;
   }
 
   if (name.startsWith("funds_split.")) {

@@ -13,7 +13,7 @@ import { PlatformSettings } from "@/models/platformSettings";
 import { User, type UserDocument } from "@/models/user";
 import { Activity } from "@/models/activity";
 import { Forbidden, InvalidState, NotFound } from "@/server/errors";
-import { markCardPaymentFailed, onFundingSucceeded, refreshSplits, type SplitGateway } from "@/services/escrow";
+import { markCardPaymentFailed, onFundingSucceeded, refreshRefunds, refreshSplits, type SplitGateway } from "@/services/escrow";
 import { getOffer } from "@/services/offers";
 
 const PAYABLE = new Set(["REQUIRES_PAYMENT_METHOD", "REQUIRES_CUSTOMER_ACTION", "REQUIRES_CAPTURE", "PENDING"]);
@@ -165,6 +165,7 @@ export async function syncOffer(user: UserDocument, offerId: string, gateway: Ca
   const offer = await loadOffer(offerId, user._id.toString());
   await applyCardStatus(offer, gateway, splits);
   await refreshSplits(offer._id.toString(), splits);
+  await refreshRefunds(offer._id.toString());
   return getOffer(user, offerId);
 }
 
