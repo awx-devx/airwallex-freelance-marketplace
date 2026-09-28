@@ -12,9 +12,43 @@ const newsreader = Newsreader({
   variable: "--font-serif",
 });
 
+const title = "Freelance escrow";
+const description = "Milestone payments, held until the buyer approves.";
+
+function metadataBase() {
+  try {
+    return new URL(process.env.APP_URL || "http://localhost:3000");
+  } catch {
+    return new URL("http://localhost:3000");
+  }
+}
+
 export const metadata: Metadata = {
-  title: "Freelance escrow",
-  description: "Milestone escrow demo on an Airwallex sandbox account.",
+  metadataBase: metadataBase(),
+  title: { default: title, template: `%s · ${title}` },
+  description,
+  applicationName: title,
+  openGraph: {
+    title,
+    description,
+    siteName: title,
+    type: "website",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: `${title}. ${description}` }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/og-image.png"],
+  },
+  icons: {
+    icon: [
+      { url: "/favicon-light.svg", type: "image/svg+xml", media: "(prefers-color-scheme: light)" },
+      { url: "/favicon-dark.svg", type: "image/svg+xml", media: "(prefers-color-scheme: dark)" },
+      { url: "/favicon-light.png", type: "image/png", sizes: "64x64", media: "(prefers-color-scheme: light)" },
+      { url: "/favicon-dark.png", type: "image/png", sizes: "64x64", media: "(prefers-color-scheme: dark)" },
+    ],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

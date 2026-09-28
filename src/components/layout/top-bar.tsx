@@ -9,6 +9,7 @@ import type { BalanceDTO } from "@/contracts/wallet";
 import type { UserSummaryDTO } from "@/contracts/users";
 import { UserChip } from "@/components/domain/user-chip";
 import { WalletChip } from "@/components/domain/wallet-chip";
+import { LogoMark } from "@/components/layout/logo-mark";
 import { HeaderCredit } from "@/components/layout/powered-by";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -62,8 +63,8 @@ export function TopBar({
   return (
     <header className={cn("relative z-30 border-b border-border bg-background", pinned && "sticky top-0")}>
       <div className="flex min-h-14 items-center justify-between gap-3 px-4 sm:px-6">
-        <Link href="/" className="font-serif text-xl font-medium tracking-tight">
-          Escrow
+        <Link href="/" aria-label="Freelance escrow" className="inline-flex items-center text-foreground max-md:min-h-11">
+          <LogoMark />
         </Link>
         <div className="hidden items-center gap-2 md:flex">
           <Link href="/wallet" className="rounded-md px-2 py-1 hover:bg-muted" aria-label={label}>
