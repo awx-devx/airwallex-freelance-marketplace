@@ -19,7 +19,7 @@ Each flow lists **UI**, **server**, **Airwallex**, and **DB** effects. Airwallex
 
 | Step | Airwallex | DB |
 | --- | --- | --- |
-| Create CA | `POST /accounts/create` | `accountId`, step `ACCOUNT_CREATED` |
+| Create CA | `POST /accounts/create` with the `BUSINESS` body in [03 §7](./03-airwallex-integration.md#7-connected-account-provisioning) | `accountId`, step `ACCOUNT_CREATED` |
 | Submit | `POST /accounts/{id}/submit` | step `SUBMITTED` |
 | Force active | `POST /simulation/accounts/{id}/update_status` (`ACTIVE`, `force: true`) | step `ACTIVE`, `accountStatus: ACTIVE` |
 | Welcome credit | `POST /connected_account_transfers/create` (`WELCOME_CREDIT_AMOUNT`) | step `WELCOME_CREDITED` |
@@ -95,7 +95,7 @@ No Airwallex calls happen yet.
 
 1. Page load calls `POST /api/offers/:id/payments/card`, which runs `funding.startCardPayment(offerId)`:
    - Guard: caller is buyer; offer is `SENT` or `AWAITING_PAYMENT`.
-   - Reuse an existing `PENDING` payment if its PI is still payable; otherwise create payment attempt N and `POST /pa/payment_intents/create` with `amount = total`, `currency`, `merchant_order_id = offerId`, `request_id = pi:{offerId}:{N}`, `connected_account_id = sellerCA`, `metadata = { offerId, offerRef }`, `return_url = {APP_URL}/offers/{id}/pay/return`.
+   - Reuse an existing `PENDING` payment if its PI is still payable; otherwise create payment attempt N and `POST /pa/payment_intents/create` with `amount = total`, `currency`, `merchant_order_id = offerId`, `request_id = pi:{offerId}:{N}`, `metadata = { offerId, offerRef }`, `return_url = {APP_URL}/offers/{id}/pay/return`. Omit `connected_account_id` (this sandbox rejects it). The later Funds Splits still name the seller and Revenue business accounts as `destination`.
    - Offer → `AWAITING_PAYMENT`.
    - Returns `{ intentId, clientSecret, currency }`.
 2. Buyer enters test card `4035 5010 0000 0008`. Drop-in confirms directly with Airwallex.

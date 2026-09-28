@@ -101,10 +101,10 @@ Small standalone `tsx` scripts in `scripts/spike/`, sharing the real `src/lib/ai
 | Script | Verifies | Answers risk |
 | --- | --- | --- |
 | `01-auth.ts` | Login, token `expires_at`, API version header | R8 |
-| `02-connected-account.ts` | Minimal `accounts/create` payload for an `INDIVIDUAL`; `submit`; `simulation/update_status` → `ACTIVE`; account tier | R1, R2 |
+| `02-connected-account.ts` | `accounts/create` payload; `submit`; `simulation/update_status` → `ACTIVE`. The working payload is `BUSINESS` (see [03 §7](./03-airwallex-integration.md#7-connected-account-provisioning)) | R1, R2 |
 | `03-balances-and-ca-transfer.ts` | CA Transfer platform → CA; `balances/current` + `history` with `x-on-behalf-of` | R6 |
 | `04-charge.ts` | Charge CA → platform; `source` accepts `acct_...`; any authorization prerequisites | R5 |
-| `05-payment-intent.ts` | Create PI with `connected_account_id`; print `client_secret`. Then pay it by hand via a tiny static HTML page using Drop-in (`scripts/spike/checkout.html`) | R3 |
+| `05-payment-intent.ts` | Create a PaymentIntent (omit `connected_account_id` on this sandbox); print `client_secret`. Then pay it by hand via `scripts/spike/checkout.html` | R3 |
 | `06-funds-split-held.ts` | After a PI succeeds: create 2 splits with `auto_release: false`; confirm status `CREATED`; wait N minutes/hours; release one; observe `RELEASED` → `SETTLED` and the destination balance increase | R3, R4 |
 | `07-reversal-and-refund.ts` | On an unreleased split: create reversal, then partial refund. On a released split: reversal behaviour | R7 |
 | `08-webhooks.ts` | Run a tiny server + tunnel; log real payloads for each subscribed event; verify signatures | R9 |
@@ -122,7 +122,7 @@ Small standalone `tsx` scripts in `scripts/spike/`, sharing the real `src/lib/ai
 ### B2 — Airwallex client, provisioning, seed users
 
 - `src/lib/airwallex/*` + `airwallex_logs` logging; `services/provisioning.ts`; `POST /api/me/provisioning`.
-- `scripts/seed.ts` users portion (Revenue CA + 8 seed users), `scripts/reset.ts`.
+- `scripts/seed.ts` users portion: one `BUSINESS` Revenue CA (service fee, no login, no welcome credit) and one `BUSINESS` CA per seed user (8), each via `services/provisioning.ts` and `scripts/seed-data/identity-fixture.ts`. `scripts/reset.ts` does not delete Airwallex accounts.
 - `GET /api/wallet` (balances) so the `WalletChip` works.
 
 **Demo:** sign up and see a real `acct_...` with a $5,000 balance. Guest login works.

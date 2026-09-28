@@ -14,7 +14,7 @@ In one sentence: **the seller sends an offer, the buyer accepts and pays, the se
    - Funds Split (to seller + to a platform revenue account)
    - Delayed release (`auto_release: false` + Release endpoint)
    - Refunds (Funds Split Reversal + Refund)
-   - Connected Accounts (one per user, with wallet balances)
+   - Connected Accounts (one business account per user, plus one business account for the platform fee, each with a wallet)
    - Webhook-driven status updates
 3. Zero-friction access: seeded accounts and a **"Continue as guest"** button, so anyone can try it without signing up.
 4. A codebase that works as a **reference/base for other builders and LLMs**, with explicit comments marking demo-only shortcuts.

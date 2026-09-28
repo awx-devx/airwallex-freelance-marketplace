@@ -26,7 +26,7 @@ Milestones are **embedded** in offers because they are always read and written w
   name: string,
   headline?: string,           // "Brand designer", shown on offers
   avatarColor: string,         // cheap avatar
-  kind: 'REGULAR' | 'SEED' | 'REVENUE',   // REVENUE = the platform revenue account holder (no login)
+  kind: 'REGULAR' | 'SEED' | 'REVENUE',   // REVENUE = the service-fee account (no login)
   isGuestPool: boolean,        // DEMO-ONLY: may be handed out by "Continue as guest"
   airwallex: {
     accountId?: string,        // acct_...
@@ -42,6 +42,8 @@ Milestones are **embedded** in offers because they are always read and written w
 ```
 
 Indexes: `{ email: 1 }` unique; `{ 'airwallex.accountId': 1 }` unique sparse; `{ isGuestPool: 1 }`.
+
+Every user CA, including `REVENUE`, is an Airwallex `BUSINESS` account. Provisioning always sends that type ([03 §7](./03-airwallex-integration.md#7-connected-account-provisioning)). The user document does not store a separate entity type. `REVENUE` is created by the seed script, not by sign-up, and is the destination of each milestone's fee share.
 
 ## `offers`
 

@@ -51,7 +51,7 @@ rg -n "SANDBOX:" src scripts
 | **Guest access** | "Continue as guest" logs into a **shared** seed account | No shared accounts. Per-visitor ephemeral sandboxes if a demo mode is needed |
 | **Seed login list** | Login page lists seed accounts and their password | Never |
 | **User directory** | Any user can search all users by email | Invite by email/link; privacy controls |
-| **KYC / onboarding** | Fixture identity data, T&Cs agreed on the user's behalf, forced `ACTIVE` via simulation API | Hosted Onboarding / Embedded KYC; real consent; handle `ACTION_REQUIRED` and RFIs; async activation |
+| **KYC / onboarding** | Fixture **business** identity (`scripts/seed-data/identity-fixture.ts`): a company plus one director, T&Cs agreed on the user's behalf, forced `ACTIVE` via simulation API. The same payload is used for seed users, the fee account, and sign-ups | Hosted Onboarding / Embedded KYC; real business or individual onboarding; real consent; handle `ACTION_REQUIRED` and RFIs; async activation |
 | **Provisioning** | Inline during sign-up, polled by the browser (`src/components/screens/welcome-screen.tsx`) | Background job with retries and alerting |
 | **Welcome credit** | Platform gives every user $5,000 from its sandbox wallet via CA Transfer | Not a thing. Balances come from real payments / deposits |
 | **Welcome offer** | Auto-generated offer from a seed seller | Not a thing |
@@ -63,10 +63,10 @@ rg -n "SANDBOX:" src scripts
 | **Currency** | Single currency (`USD`) | Multi-currency pricing, FX (Conversions API), currency-precision handling |
 | **Amount limits** | Min $10 per milestone; sandbox transaction limit is ~10,000 | Business rules plus Airwallex account limits |
 | **Webhook processing** | Processed inline in the request; always returns 200 | Ack fast, enqueue, process async with retries; alert on failures |
-| **Webhook test signatures** | Accepts `client-secret-key` header for web-app test events (non-prod only) | Never |
+| **Webhook test signatures** | Accepts `client-secret-key` header for web-app test events (non-prod only), including `scripts/spike/08-webhooks.ts` | Never |
 | **Sync endpoint** | Any participant can force-sync from Airwallex; UI polls it | Keep as an internal reconciliation job, not user-triggered |
 | **`/platform` page** | Visible to any logged-in user (`src/components/screens/platform-screen.tsx`; optional `DEMO_ADMIN_KEY`) | Proper admin RBAC and audit logs |
-| **Token cache** | In-memory per server instance | Shared cache with a single-flight refresh; respect login rate limits |
+| **Token cache** | In-memory per server instance (`src/lib/airwallex/client.ts`) | Shared cache with a single-flight refresh; respect login rate limits |
 | **`client_secret` persistence** | Stored on `payments` to re-render checkout | Don't persist; re-fetch PI or create a new one |
 | **Logs** | Full request/response bodies (redacted) stored in Mongo and **shown to users** in the activity panel | Structured logs in an observability stack; never show raw API payloads to end users |
 | **Concurrency** | Conditional Mongo updates only | Plus transactions where multi-document, plus an outbox pattern for external calls |

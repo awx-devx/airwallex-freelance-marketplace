@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Spike checkout</title>
+    <style>
+      body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 2rem auto; max-width: 32rem; color: #1c1917; }
+      button { margin-top: 1rem; padding: 0.5rem 0.75rem; }
+      #dropIn { margin-top: 1rem; }
+      pre { white-space: pre-wrap; background: #f5f5f4; padding: 0.75rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Sandbox PaymentIntent</h1>
+    <p>Test card <code>4035 5010 0000 0008</code>, any future expiry, any CVC.</p>
+    <p id="status">Loading Drop-in…</p>
+    <div id="dropIn"></div>
+    <button id="hpp" type="button">Open Hosted Payment Page instead</button>
+    <pre id="log"></pre>
+    <script type="module">
+      const status = document.querySelector("#status");
+      const log = document.querySelector("#log");
+      const hpp = document.querySelector("#hpp");
+
+      function note(message) {
+        log.textContent += message + "\n";
+      }
+
+      async function report(path, ok, detail) {
+        await fetch("/result", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ path, ok, detail }),
+        });
+      }
+
+      try {
+        const config = await fetch("/config.json").then((response) => {
+          if (!response.ok) throw new Error("Open this page via npm run spike:checkout");
+          return response.json();
+        });
+        // AIRWALLEX: mount the element before attaching listeners.
+        // https://www.airwallex.com/docs/payments/payment-methods/card/drop-in-element
+        const sdk = await import("https://esm.sh/@airwallex/components-sdk");
+        const initialized = await sdk.init({ env: config.env, enabledElements: ["payments"] });
+        const payments = initialized?.payments;
+        if (!payments?.createElement) {
+          throw new Error("payments.createElement is not on the init() result");
+        }
+        const element = await payments.createElement("dropIn", {
+          intent_id: config.intentId,
+          client_secret: config.clientSecret,
+          currency: config.currency,
+        });
+        element.mount("dropIn");
+        element.on("success", async () => {
+          status.textContent = "Drop-in reported success. This is provisional until spike:funds-split retrieves the PaymentIntent.";
+          await report("dropIn", true, "success event");
+        });
+        element.on("error", async (event) => {
+          const detail = JSON.stringify(event?.detail ?? event);
+          status.textContent = "Drop-in error. Try the Hosted Payment Page.";
+          note(detail);
+          await report("dropIn", false, detail);
+        });
+        status.textContent = "Drop-in mounted.";
+        await report("dropIn", true, "mounted");
+
+        hpp.addEventListener("click", async () => {
+          const payments = initialized?.payments;
+          if (!payments?.redirectToCheckout) {
+            const detail = "redirectToCheckout is not on the init() result";
+            note(detail);
+            await report("hpp", false, detail);
+            return;
+          }
+          await payments.redirectToCheckout({
+            intent_id: config.intentId,
+            client_secret: config.clientSecret,
+            currency: config.currency,
+            successUrl: `${location.origin}/paid`,
+          });
+        });
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        status.textContent = "Drop-in failed to load.";
+        note(detail);
+        try {
+          await report("dropIn", false, detail);
+        } catch {
+          note("Could not record the result. Serve this page with npm run spike:checkout.");
+        }
+      }
+    </script>
+  </body>
+</html>

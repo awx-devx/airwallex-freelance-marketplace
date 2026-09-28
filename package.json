@@ -8,7 +8,17 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "spike:auth": "tsx --env-file=.env.local scripts/spike/01-auth.ts",
+    "spike:account": "tsx --env-file=.env.local scripts/spike/02-connected-account.ts",
+    "spike:balances": "tsx --env-file=.env.local scripts/spike/03-balances-and-ca-transfer.ts",
+    "spike:charge": "tsx --env-file=.env.local scripts/spike/04-charge.ts",
+    "spike:payment-intent": "tsx --env-file=.env.local scripts/spike/05-payment-intent.ts",
+    "spike:checkout": "tsx --env-file=.env.local scripts/spike/serve-checkout.ts",
+    "spike:funds-split": "tsx --env-file=.env.local scripts/spike/06-funds-split-held.ts",
+    "spike:refund": "tsx --env-file=.env.local scripts/spike/07-reversal-and-refund.ts",
+    "spike:webhooks": "tsx --env-file=.env.local scripts/spike/08-webhooks.ts",
+    "spike:all": "tsx --env-file=.env.local scripts/spike/run-all.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

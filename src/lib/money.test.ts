@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fromAwxAmount, formatMoney, toAwxAmount } from "@/lib/money";
+import { fromAwxAmount, formatMoney, toAwxAmount, toAwxAmountString } from "@/lib/money";
 
 describe("toAwxAmount", () => {
   it("converts minor units to decimal major units", () => {
@@ -12,6 +12,15 @@ describe("toAwxAmount", () => {
   it("rejects a non-integer and an unknown currency", () => {
     expect(() => toAwxAmount(12.5, "USD")).toThrow(/integer/);
     expect(() => toAwxAmount(100, "JPY")).toThrow(/Unsupported currency/);
+  });
+});
+
+describe("toAwxAmountString", () => {
+  it("keeps minor-unit precision in the decimal string", () => {
+    expect(toAwxAmountString(1250, "USD")).toBe("12.50");
+    expect(toAwxAmountString(10, "USD")).toBe("0.10");
+    expect(toAwxAmountString(100_000, "USD")).toBe("1000.00");
+    expect(toAwxAmountString(0, "USD")).toBe("0.00");
   });
 });
 

@@ -21,8 +21,8 @@ flowchart TB
 
 - **One platform account.** A self-serve sandbox account comes pre-activated, with Payments onboarding approved, Hosted Payment Page enabled, cards enabled, and wallets pre-funded (10,000,000 each in USD, EUR, GBP, and CNY). Settlement is `BACKTOBACK` with a **0-day delay**. Source: [Sandbox settings](https://www.airwallex.com/docs/developer-tools/sandbox-environment/sandbox-settings.md).
 - **Connected accounts must be enabled on the platform account.** The quickstart requires "an Airwallex platform account with connected accounts capabilities enabled", which means contacting Airwallex. Funds Split also requires the Payments-for-Platforms setup. **This is the main external dependency.** See [11-setup-and-runbook.md](./11-setup-and-runbook.md).
-- **One connected account (CA) per user**, type `INDIVIDUAL`. Created via `POST /api/v1/accounts/create`, submitted, then force-activated with the sandbox simulation endpoint.
-- **One Revenue CA** (seeded, `BUSINESS` or `INDIVIDUAL`) that receives the platform-fee share of every split, to make "funds split to a known account" visible.
+- **One connected account (CA) per user**, type `BUSINESS`. Created via `POST /api/v1/accounts/create`, submitted, then force-activated with the sandbox simulation endpoint. The UI still calls them freelancers. Airwallex has to see a business account because this sandbox rejects Funds Splits to individual accounts (`Individual account funds split is only supported for the model 2.1`).
+- **One Revenue CA**, also `BUSINESS`, seeded once. It receives the platform-fee share of every split (the service fee). It has no login (`kind: REVENUE`). Same create payload as a user, with `business_name: "Platform Revenue"`.
 
 ### Account tier
 
@@ -43,7 +43,9 @@ Airwallex's gateway for platforms has two models ([overview](https://www.airwall
 | API indicator | Body param `connected_account_id` | Header `x-on-behalf-of` |
 | Typical use | Marketplaces / freelancer platforms | SaaS |
 
-We use **Collect payments directly** because it fits a marketplace: the platform is Merchant of Record, it owns refunds and disputes, and it disburses to sellers via Funds Split. It also means sellers don't need payment-acceptance capability (simpler onboarding).
+We use **Collect payments directly** because it fits a marketplace: the platform is Merchant of Record, it owns refunds and disputes, and it disburses to sellers via Funds Split.
+
+On this sandbox, omit `connected_account_id` when creating the PaymentIntent. Naming either an individual or a business account returned `The connected account is not enabled for payment acceptance.` A PaymentIntent with no connected account was paid, then split to a business account. Do not block checkout on that field. Split `destination` is still the seller's business CA and the Revenue CA.
 
 ## 3. The two funding rails
 
@@ -104,7 +106,7 @@ sequenceDiagram
   participant AX as Airwallex
 
   B->>S: Accept offer (POST /api/offers/:id/payments/card)
-  S->>AX: POST /pa/payment_intents/create {amount: total, currency, merchant_order_id: offerId,<br/>connected_account_id: sellerCA, metadata, return_url}
+  S->>AX: POST /pa/payment_intents/create {amount: total, currency, merchant_order_id: offerId,<br/>metadata, return_url}
   AX-->>S: {id: int_..., client_secret}
   S->>DB: payment {PENDING, paymentIntentId}; offer → AWAITING_PAYMENT
   S-->>B: intent_id + client_secret
@@ -135,15 +137,14 @@ sequenceDiagram
 
 - Create splits **immediately** when `payment_intent.succeeded` arrives, or from the return-page fallback, whichever comes first. Both call the same idempotent `escrow.createHeldSplits(offerId)`.
 - **Do not** use `funds_split_data` on PaymentIntent create. Splits created that way are **automatically released** after success, which defeats the escrow.
-- Whether a held (`auto_release: false`) split can stay held for days or weeks is **unverified**. Spike this first.
+- A held split stayed `CREATED` for the short spike window. Whether it can stay held for days or weeks is still unknown (R4).
 
 ### Card rail: refund / cancel
 
 For a milestone that's funded but not released (`FUNDED`, `SUBMITTED`, `CHANGES_REQUESTED`):
 
-1. For each of the milestone's splits, `POST /api/v1/pa/funds_split_reversals/create { funds_split_id, amount: splitAmount }`. This returns the split funds to the platform.
-   - Verify in the spike whether a reversal is required (or even allowed) for a split still in `CREATED` status. If Airwallex refuses, record the split as abandoned and rely on the refund alone. See risks.
-2. `POST /api/v1/pa/refunds/create { payment_intent_id, amount: M, reason }`, a partial refund for exactly the milestone amount.
+1. `POST /api/v1/pa/refunds/create { payment_intent_id, amount: M, reason }`, a partial refund for exactly the milestone amount. The spike accepted this while the milestone's splits were still `CREATED`.
+2. Attempt `POST /api/v1/pa/funds_split_reversals/create { funds_split_id, amount: splitAmount }` for each split, but do not fail the cancel if it returns `Insufficient funds`. That was the result for both a `CREATED` split and a `RELEASED` split that had not settled, because the destination balance was still `0`. Record the split as still outstanding. A `CREATED` split stayed `CREATED` after the refund.
 3. `refund.accepted` / `refund.settled` webhooks mark the milestone `REFUNDED`.
 
 Refunds are paid from the platform's refundable funds (unsettled funds or available balance in that currency). The sandbox platform wallet is pre-funded, so this won't fail for lack of funds. Airwallex processing fees are generally **not** returned on refund. That small loss comes out of the platform's balance. See [Refunds](https://www.airwallex.com/docs/payments/payment-operations/manage-payments/refunds.md).
@@ -185,12 +186,14 @@ Notes:
 
 ## 7. Connected account provisioning
 
-Run for every seed user, the Revenue account, and every new sign-up. Each step is recorded on the user doc (`airwallex.provisioning.step`) so it can resume after a failure.
+Run the same steps for every seed user, the Revenue (service fee) account, and every new sign-up. `scripts/seed.ts` calls this for the fee account first, then for each of the 8 seed users. Sign-up calls it for that one user. Each step is recorded on the user doc (`airwallex.provisioning.step`) so it can resume after a failure. Do not reuse the spike's individual account ids. Those cannot receive Funds Splits.
+
+The create body is `accountCreateBody` in `scripts/seed-data/identity-fixture.ts`. It is the payload that submitted and force-activated in the spike (`acct_PZCj0eyONbe6g5OT-RuSKA`). Copy it. Do not send `legal_entity_type: INDIVIDUAL`.
 
 | Step | Call | Notes |
 | --- | --- | --- |
-| 1. Create | `POST /api/v1/accounts/create` | `account_details.legal_entity_type: INDIVIDUAL`, `individual_details` (name, DOB, nationality, `residential_address`), `customer_agreements { agreed_to_data_usage: true, agreed_to_terms_and_conditions: true }`, `primary_contact.email`. Returns `acct_...`, status `CREATED`. |
-| 2. Submit | `POST /api/v1/accounts/{id}/submit` | Moves to `SUBMITTED`. Mandatory fields depend on country. Discover the minimal sandbox payload in the spike. |
+| 1. Create | `POST /api/v1/accounts/create` | `legal_entity_type: BUSINESS`. `business_details`: `business_name` (the user's name, or `Platform Revenue` for the fee account), `business_structure: COMPANY`, `url`, `industry_category_code: ICCV3_0802XX`, `description_of_goods_or_services`, `operating_country: [US]`, `business_identifiers: [{ country_code: US, number: <fixture EIN unique per identifier>, type: EIN }]`, `account_usage.product_reference: [RECEIVE_TRANSFERS]`, `business_address` and `registration_address`. `business_person_details`: one director with name, DOB, nationality, `residential_address`, and `identifications.primary` (passport). `customer_agreements` agrees to data usage and terms. `primary_contact.email`. `identifier` is stable per user (`seed-maya`, `revenue`, or the user id) so a retry does not create a second account. Returns `acct_...`, status `CREATED`. |
+| 2. Submit | `POST /api/v1/accounts/{id}/submit` | Moves to `SUBMITTED`. Submit failed with `field_required` on `business_person_details[0].identifications.primary` until that object was present. Force-activate failed with "needs to be submitted" until status was `SUBMITTED`. |
 | 3. Activate | `POST /api/v1/simulation/accounts/{id}/update_status { next_status: "ACTIVE", force: true }` | **Sandbox only.** Skips KYC review. |
 | 4. Confirm | `GET /api/v1/accounts/{id}` or webhook `account.active` | Store status. |
 | 5. Welcome credit | `POST /api/v1/connected_account_transfers/create { destination: acct, amount: WELCOME_CREDIT_AMOUNT }` | From the platform's pre-funded wallet. Gives the user a wallet balance for the wallet rail. |
@@ -220,7 +223,7 @@ All paths are relative to `https://api.sandbox.airwallex.com`. All calls use `Au
 | Submit account | `POST /api/v1/accounts/{id}/submit` | – | provisioning |
 | Force status (sandbox) | `POST /api/v1/simulation/accounts/{id}/update_status` | – | provisioning |
 | Retrieve account | `GET /api/v1/accounts/{id}` | – | provisioning, sync |
-| Create PaymentIntent | `POST /api/v1/pa/payment_intents/create` | – (`connected_account_id` in body) | card funding |
+| Create PaymentIntent | `POST /api/v1/pa/payment_intents/create` | – (omit `connected_account_id` on this sandbox) | card funding |
 | Retrieve PaymentIntent | `GET /api/v1/pa/payment_intents/{id}` | – | return page, sync |
 | Create Funds Split | `POST /api/v1/pa/funds_splits/create` | – | escrow |
 | Release Funds Split | `POST /api/v1/pa/funds_splits/{id}/release` | – | approve |
@@ -241,10 +244,10 @@ Refund statuses: `RECEIVED` → `ACCEPTED` → `SETTLED` or `FAILED`.
 
 ```ts
 // client component — src/components/checkout/DropInCheckout.tsx
-import { init, createElement } from '@airwallex/components-sdk';
+import { init } from '@airwallex/components-sdk';
 
-await init({ env: process.env.NEXT_PUBLIC_AIRWALLEX_ENV as 'demo', enabledElements: ['payments'] });
-const el = createElement('dropIn', { intent_id, client_secret, currency });
+const { payments } = await init({ env: process.env.NEXT_PUBLIC_AIRWALLEX_ENV as 'demo', enabledElements: ['payments'] });
+const el = await payments.createElement('dropIn', { intent_id, client_secret, currency });
 el.mount('dropIn');                       // AIRWALLEX: mount BEFORE attaching listeners
 el.on('success', () => router.push(`/offers/${offerId}/pay/return`));
 el.on('error', (e) => setError(e.detail));

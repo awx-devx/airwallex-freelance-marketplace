@@ -15,7 +15,7 @@ Everything runs on **one Airwallex sandbox account** (the "platform"). Every use
 | Release on approval | When the buyer approves a milestone, the server calls **Release a Funds Split** for that milestone's splits. |
 | Platform fee | Each milestone is split three ways: seller share, a seeded **Platform Revenue** connected account, and a small unsplit remainder left on the platform account to absorb Airwallex processing fees. |
 | Refunds | Cancelling an unreleased milestone **reverses** its splits (Funds Split Reversal) and issues a **partial Refund** on the PaymentIntent. |
-| User financial accounts | Every user = one Airwallex **connected account**, created via API and force-activated with the sandbox simulation endpoint. |
+| User financial accounts | Every user = one Airwallex **business** connected account, created via API and force-activated with the sandbox simulation endpoint. Seed also creates the service-fee account the same way. |
 | Wallet rail (secondary) | Users can also pay from their wallet balance using **Charges** (buyer to platform) and **Connected Account Transfers** (platform to seller). The seed script uses this rail too. |
 | Status updates | Airwallex **webhooks** drive state changes. A "sync" fallback retrieves objects directly for local development. |
 | Stack | Next.js (App Router) + MongoDB (Mongoose). **No Redis** (not needed; see architecture doc). |
@@ -45,13 +45,13 @@ Everything runs on **one Airwallex sandbox account** (the "platform"). Every use
 | Term | Meaning here |
 | --- | --- |
 | Platform account | Our single Airwallex sandbox account. Owns all PaymentIntents, API keys, and webhooks. |
-| Connected account (CA) | An Airwallex account created under the platform for each user (`acct_...`). Has its own multi-currency wallet. |
+| Connected account (CA) | An Airwallex **business** account created under the platform for each user, and one more for the service fee (`acct_...`). Has its own multi-currency wallet. |
 | Seller | The user who creates and sends an offer, and delivers milestones. |
 | Buyer | The user who receives an offer, pays for it, and approves milestones. |
 | Offer | A proposal from seller to buyer made up of one or more milestones. Once funded it's effectively a contract. |
 | Milestone | A unit of work with its own amount. Its funds are released independently. |
 | Funds Split | Airwallex object that routes part of a PaymentIntent to a connected account. With `auto_release: false` it is held until released. |
-| Revenue account | A seeded connected account that receives the platform-fee portion of each split. Represents "platform earnings". |
+| Revenue account | The seeded business connected account that receives the platform-fee portion of each split. No login. Represents "platform earnings". |
 | Card rail | Funding an offer with a card PaymentIntent plus Funds Splits. The primary demo path. |
 | Wallet rail | Funding an offer from the buyer's CA wallet using Charges plus CA Transfers. |
 

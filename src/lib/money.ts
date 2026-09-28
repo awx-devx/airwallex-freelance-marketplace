@@ -42,8 +42,8 @@ function parseMajorToMinor(value: string, currency: string): number {
   return sign * minor;
 }
 
-/** Decimal major units for Airwallex. 1250 USD → 12.5, never 1250. */
-export function toAwxAmount(amountMinor: number, currency: string): number {
+/** Decimal major-unit string for Airwallex. 1250 USD → "12.50", never "1250". */
+export function toAwxAmountString(amountMinor: number, currency: string): string {
   assertMinor(amountMinor);
   const exponent = currencyExponent(currency);
   const sign = amountMinor < 0 ? "-" : "";
@@ -51,9 +51,13 @@ export function toAwxAmount(amountMinor: number, currency: string): number {
   const factor = 10 ** exponent;
   const whole = Math.trunc(absolute / factor);
   const fraction = absolute % factor;
-  const text =
-    exponent === 0 ? `${sign}${whole}` : `${sign}${whole}.${String(fraction).padStart(exponent, "0")}`;
-  return Number(text);
+  if (exponent === 0) return `${sign}${whole}`;
+  return `${sign}${whole}.${String(fraction).padStart(exponent, "0")}`;
+}
+
+/** Decimal major units for Airwallex. 1250 USD → 12.5, never 1250. */
+export function toAwxAmount(amountMinor: number, currency: string): number {
+  return Number(toAwxAmountString(amountMinor, currency));
 }
 
 /** Airwallex decimal (number or string) → integer minor units, half up. */

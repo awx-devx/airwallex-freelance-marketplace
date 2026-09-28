@@ -10,15 +10,17 @@
 
 ## What gets seeded
 
-### 1. Revenue account
+`npm run seed` creates a real sandbox connected account for **every row below**, using the same `BUSINESS` payload as sign-up ([03 §7](./03-airwallex-integration.md#7-connected-account-provisioning)). That is 1 fee account + 8 seed users. The spike's individual accounts are not these accounts and must not be reused: Funds Splits to individual accounts fail on this sandbox.
+
+### 1. Service fee account (Revenue)
 
 | Field | Value |
 | --- | --- |
 | Name | `Platform Revenue` |
 | Email | `revenue@demo.test` (no login; `kind: REVENUE`) |
-| Airwallex | CA created → submitted → forced `ACTIVE`. No welcome credit. |
+| Airwallex | `BUSINESS` CA created → submitted → forced `ACTIVE`. No welcome credit. `business_name` is `Platform Revenue`. |
 
-Its `acct_...` is saved to `platform_settings.revenueAccountId`. All fee splits go here.
+Its `acct_...` is saved to `platform_settings.revenueAccountId`. Every milestone's fee split (`revenueMinor`) goes here, on both the card rail and the wallet rail. Seed creates this account before the users, because later offer funding transfers the fee into it.
 
 ### 2. Seed users
 
@@ -35,7 +37,7 @@ All use password `SEED_PASSWORD` (default `demo1234`). All are `kind: SEED`. Tho
 | Aiko Tanaka | `aiko@demo.test` | Motion designer | ✓ | Both |
 | Omar Haddad | `omar@demo.test` | Indie game studio owner | ✓ | Both |
 
-Each goes through the same provisioning as a real sign-up (see [05 F1](./05-user-flows.md#f1-sign-up)), including the **welcome credit** (`WELCOME_CREDIT_AMOUNT`, default $5,000). Buyers get an extra seed top-up (for example +$20,000) so wallet-rail demos never run dry.
+Each goes through the same provisioning as a real sign-up (see [05 F1](./05-user-flows.md#f1-sign-up)): create a `BUSINESS` connected account, submit, force `ACTIVE`, then the **welcome credit** (`WELCOME_CREDIT_AMOUNT`, default $5,000). Buyers get an extra seed top-up (for example +$20,000) so wallet-rail demos never run dry. If a user already has an `ACTIVE` account id stored, provisioning reuses it. It does not create a second account.
 
 ### 3. Seed offers
 
@@ -80,13 +82,13 @@ seed():
   assert Airwallex login works (fail fast with a helpful message)
   ensure platform_settings
 
-  revenue = upsertUser(revenue spec)
-  provision(revenue, { welcomeCredit: false })
+  revenue = upsertUser(revenue spec)          // kind REVENUE, no login
+  provision(revenue, { welcomeCredit: false }) // BUSINESS CA; the service-fee destination
   save revenueAccountId
 
-  for spec in SEED_USERS:
+  for spec in SEED_USERS:                    // all 8 rows in the table above
     user = upsertUser(spec)                  // by email; keep existing passwordHash if unchanged
-    provision(user)                          // resumable; no-op if READY
+    provision(user)                          // BUSINESS CA; resumable; no-op if READY
     if spec.extraTopUp: caTransfer(user, spec.extraTopUp, request_id = `seedtopup:{userId}:{seedVersion}`)
 
   for spec in SEED_OFFERS:

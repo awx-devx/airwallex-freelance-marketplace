@@ -10,6 +10,8 @@
    - **Charges** and **Connected Account Transfers**
    - Confirm which **connected account tier** (ledger / withdrawal / full) sandbox CAs will be, and that they can be Funds Split destinations.
    - Ask about any **maximum hold period** for unreleased Funds Splits.
+
+   The spike already confirmed connected accounts, charges, transfers, and Funds Splits to **business** accounts. `connected_account_id` on PaymentIntent create is still rejected, so the backend omits it. Individual accounts cannot be split destinations on this sandbox.
 3. **API keys:** Developer → API keys. Copy the **Client ID** and **API key** into `.env.local`.
 4. **Webhooks:** Developer → Webhooks → add `https://<public-host>/api/webhooks/airwallex`. Subscribe to the events in [07-webhooks.md](./07-webhooks.md#subscriptions). Copy the **secret** into `AIRWALLEX_WEBHOOK_SECRET`.
 5. Note the **platform account ID** (`acct_...`) into `AIRWALLEX_PLATFORM_ACCOUNT_ID`.
@@ -21,7 +23,7 @@
 cp .env.example .env.local        # fill in Airwallex + Mongo values
 npm install
 npm run spike:all                 # B0 sandbox checks (see 12-implementation-plan.md)
-npm run seed                      # creates Revenue CA, seed users, seed offers
+npm run seed                      # business CA for the fee account, then one per seed user, then seed offers
 npm run dev                       # http://localhost:3000
 ```
 
@@ -41,7 +43,16 @@ Without a tunnel, the app falls back to polling via the sync endpoint.
 | `dev` / `build` / `start` | Next.js |
 | `seed` | `tsx scripts/seed.ts` |
 | `reset` | `tsx scripts/reset.ts` (add `-- --hard --yes` for a full wipe) |
-| `spike:*` | Individual sandbox experiments in `scripts/spike/` |
+| `spike:all` | Scripts 01–05 against the sandbox. Continues into 06–07 only if the PaymentIntent is already `SUCCEEDED`. |
+| `spike:auth` | Login, `expires_at`, and the `x-api-version` header (R8). |
+| `spike:account` | Connected account create, submit, and sandbox activation (R1, R2). |
+| `spike:balances` | CA Transfer and `balances/current` + `history` with `x-on-behalf-of` (R6). |
+| `spike:charge` | Charge a connected account (`source: acct_...`) (R5). |
+| `spike:payment-intent` | Create a PaymentIntent and print `client_secret` (R3 setup). |
+| `spike:checkout` | Serve `scripts/spike/checkout.html` so you can pay that intent (R12). |
+| `spike:funds-split` | Held splits, optional wait (`SPIKE_HOLD_MINUTES`), then release one (R3, R4, R10, R11). |
+| `spike:refund` | Reversal and partial refund on the spike splits (R7). |
+| `spike:webhooks` | Local webhook listener. Needs `AIRWALLEX_WEBHOOK_SECRET` and a tunnel (R9). |
 | `test` | Unit tests (fees, money, webhook signature, state transitions) |
 | `lint` / `typecheck` | – |
 
@@ -57,7 +68,7 @@ Without a tunnel, the app falls back to polling via the sync endpoint.
 1. **Landing / login:** click **Continue as guest** and land as, for example, Sam Rivera (buyer).
 2. **Home:** point out the incoming offer from Maya ("Coffee brand identity", 3 milestones, $1,500).
 3. **Review offer:** show the milestone breakdown and fee transparency.
-4. **Accept & pay:** Drop-in, card `4035 5010 0000 0008`. Open **Behind the scenes** to show the PaymentIntent created with `connected_account_id`.
+4. **Accept & pay:** Drop-in, card `4035 5010 0000 0008`. Open **Behind the scenes** to show the PaymentIntent (no `connected_account_id` on this sandbox) and the held Funds Splits to the seller and Revenue business accounts.
 5. **Funded:** all milestones show **Held in escrow**. The panel shows `payment_intent.succeeded` and 6 Funds Splits created with `auto_release: false`.
 6. **Switch to seller:** log out, then **Log in as Maya** from the demo accounts list. Submit delivery links for Milestone 1.
 7. **Switch back to Sam:** approve Milestone 1. The panel shows two `release` calls, then `funds_split.settled`.
@@ -71,7 +82,8 @@ Without a tunnel, the app falls back to polling via the sync endpoint.
 | --- | --- |
 | `401 unauthorized` on every call | Wrong client ID/API key, or keys from production instead of sandbox. Check `AIRWALLEX_API_BASE`. |
 | `accounts/create` → 403 / `operation_not_supported` | Connected accounts not enabled on the platform account. Contact Airwallex (setup step 2). |
-| `submit` fails with validation errors | Fixture identity data missing a mandatory field for the chosen country. Adjust `identity-fixture.ts` (the spike logs the error details). |
+| `submit` fails with `field_required` | The business payload is missing `business_person_details[0].identifications.primary`. Use `accountCreateBody` in `identity-fixture.ts`. Force-activate only after status is `SUBMITTED`. |
+| Funds Split → `Individual account funds split is only supported for the model 2.1` | The destination was created as `INDIVIDUAL`. Seed and sign-up must create `BUSINESS` accounts. |
 | `simulation/.../update_status` fails | Account must be in `SUBMITTED` first. |
 | Funds Split create → `operation_not_supported` | Funds Split not enabled, **or** created after settlement. Check timing and account config. Set `ENABLE_WALLET_RAIL=true` and use the wallet rail as the fallback. |
 | Funds Split create → validation error on destination | Destination CA not `ACTIVE` / not KYC-passed, or not eligible tier. |
