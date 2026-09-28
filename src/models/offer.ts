@@ -139,11 +139,23 @@ export type OfferDocument = {
     breakdown: { sellerMinor: number; revenueMinor: number; reserveMinor: number };
     status: (typeof MilestoneStatusSchema.options)[number];
     deliveries: Array<{
+      _id: Types.ObjectId;
       links: string[];
       note?: string;
       submittedAt: Date;
       review?: { decision: "APPROVED" | "CHANGES_REQUESTED"; comment?: string; reviewedAt: Date };
     }>;
+    escrow?: {
+      sellerSplit?: { splitId: string; amountMinor: number; destination: string; status: string };
+      revenueSplit?: { splitId: string; amountMinor: number; destination: string; status: string };
+      refund?: { refundId: string; status: string };
+      sellerTransfer?: { transferId: string; amountMinor: number; destination: string; status: string };
+      revenueTransfer?: { transferId: string; amountMinor: number; destination: string; status: string };
+      refundTransfer?: { transferId: string; amountMinor: number; destination: string; status: string };
+    };
+    approvedAt?: Date;
+    paidAt?: Date;
+    refundedAt?: Date;
   }>;
   sentAt?: Date;
   acceptedAt?: Date;
