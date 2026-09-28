@@ -111,7 +111,7 @@ If the payment fails (`payment_intent.payment_failed` or a Drop-in `error`), the
 
 ### Wallet rail
 
-1. `funding.payFromWallet(offerId)`: guard as above; check `available_amount` for the buyer CA; `POST /charges/create` with `source = buyerCA`, `request_id = ch:{offerId}`, `reference = offer.shortRef`, `reason = "Escrow funding"`.
+1. `funding.payFromWallet(offerId)`: guard as above; check the buyer CA `available_amount`; `POST /charges/create` with `source = buyerCA`, `request_id = ch:{offerId}`, `reference = Escrow funding {shortRef}`. `reason` is the enum `professional_business_services` (the API rejects free text).
 2. Offer → `AWAITING_PAYMENT`. The UI shows "Processing…" and polls `/api/offers/[id]/sync`.
 3. Webhook `charge.settled` (or sync retrieving the charge) calls `escrow.onFundingSucceeded(offerId)`. For the wallet rail, this just marks milestones `FUNDED`. Escrow is the platform balance; no splits are created.
 

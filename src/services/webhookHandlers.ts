@@ -3,7 +3,8 @@ import { extractAccountId, extractObject } from "@/lib/airwallex/webhooks";
 import { connectDb } from "@/lib/db";
 import { Payment } from "@/models/payment";
 import { User } from "@/models/user";
-import { advanceRefundStatus, advanceSplitStatus, markCardPaymentFailed, onFundingSucceeded, type SplitGateway } from "@/services/escrow";
+import { advanceRefundStatus, advanceSplitStatus, advanceTransferStatus, markCardPaymentFailed, onFundingSucceeded, type SplitGateway } from "@/services/escrow";
+import { markWalletChargeFailed } from "@/services/funding";
 
 const ACCOUNT_STATUS = {
   "account.active": "ACTIVE",
@@ -36,6 +37,13 @@ function splitStatusFromName(name: string): string | undefined {
   if (name === "funds_split.released") return "RELEASED";
   if (name === "funds_split.settled") return "SETTLED";
   if (name === "funds_split.failed") return "FAILED";
+  return undefined;
+}
+
+function transferStatusFromName(name: string): string | undefined {
+  if (name.endsWith(".settled")) return "SETTLED";
+  if (name.endsWith(".failed")) return "FAILED";
+  if (name.endsWith(".suspended")) return "SUSPENDED";
   return undefined;
 }
 
@@ -74,6 +82,24 @@ export async function dispatchWebhook(event: unknown, splits?: SplitGateway): Pr
       const related = await advanceSplitStatus(objectId, status);
       return related ?? offerId;
     }
+    return offerId;
+  }
+
+  if (name === "charge.settled" || name === "charge.failed" || name === "charge.suspended") {
+    if (!objectId) return offerId;
+    if (name === "charge.settled") {
+      const payment = await Payment.findOne({ chargeId: objectId });
+      if (payment) await onFundingSucceeded(payment.offerId.toString(), splits);
+      return payment?.offerId.toString() ?? offerId;
+    }
+    return (await markWalletChargeFailed(objectId)) ?? offerId;
+  }
+
+  if (name.startsWith("connected_account_transfer.")) {
+    const requestId = readString(object, "request_id") ?? "";
+    if (requestId.startsWith("welcome:") || requestId.startsWith("seedtopup:")) return undefined;
+    const status = readString(object, "status") ?? transferStatusFromName(name);
+    if (objectId && status) return (await advanceTransferStatus(objectId, status)) ?? offerId;
     return offerId;
   }
 

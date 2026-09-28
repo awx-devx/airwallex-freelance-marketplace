@@ -4,7 +4,8 @@ import { CardPaymentSessionSchema } from "@/contracts/payments";
 import { offerActions } from "@/contracts/permissions";
 import { readString, type JsonObject } from "@/lib/airwallex/json";
 import { createPaymentIntent, retrievePaymentIntent, type CreatePaymentIntentInput } from "@/lib/airwallex/payments";
-import { paymentIntentRequestId } from "@/lib/airwallex/requestIds";
+import { chargeRequestId, paymentIntentRequestId } from "@/lib/airwallex/requestIds";
+import { createCharge, currentBalances, retrieveCharge } from "@/lib/airwallex/wallet";
 import { getServerConfig } from "@/lib/config";
 import { connectDb } from "@/lib/db";
 import { Offer, type OfferDocument } from "@/models/offer";
@@ -12,9 +13,10 @@ import { Payment, type PaymentDocument } from "@/models/payment";
 import { PlatformSettings } from "@/models/platformSettings";
 import { User, type UserDocument } from "@/models/user";
 import { Activity } from "@/models/activity";
-import { Forbidden, InvalidState, NotFound } from "@/server/errors";
-import { markCardPaymentFailed, onFundingSucceeded, refreshRefunds, refreshSplits, type SplitGateway } from "@/services/escrow";
+import { Forbidden, InsufficientBalance, InvalidState, NotFound } from "@/server/errors";
+import { markCardPaymentFailed, onFundingSucceeded, refreshRefunds, refreshSplits, refreshTransfers, type SplitGateway, type TransferGateway } from "@/services/escrow";
 import { getOffer } from "@/services/offers";
+import { mapBalances } from "@/services/wallet";
 
 const PAYABLE = new Set(["REQUIRES_PAYMENT_METHOD", "REQUIRES_CUSTOMER_ACTION", "REQUIRES_CAPTURE", "PENDING"]);
 
@@ -24,6 +26,14 @@ export type CardGateway = {
 };
 
 const liveCards: CardGateway = { createPaymentIntent, retrievePaymentIntent };
+
+export type WalletGateway = {
+  currentBalances: typeof currentBalances;
+  createCharge: typeof createCharge;
+  retrieveCharge: typeof retrieveCharge;
+};
+
+const liveWallet: WalletGateway = { currentBalances, createCharge, retrieveCharge };
 
 async function loadOffer(offerId: string, userId: string): Promise<OfferDocument> {
   await connectDb();
@@ -161,11 +171,20 @@ export async function cancelCardPayment(user: UserDocument, offerId: string) {
   return getOffer(user, offerId);
 }
 
-export async function syncOffer(user: UserDocument, offerId: string, gateway: CardGateway = liveCards, splits?: SplitGateway) {
+export async function syncOffer(
+  user: UserDocument,
+  offerId: string,
+  gateway: CardGateway = liveCards,
+  splits?: SplitGateway,
+  wallet: WalletGateway = liveWallet,
+  transfers?: TransferGateway,
+) {
   const offer = await loadOffer(offerId, user._id.toString());
   await applyCardStatus(offer, gateway, splits);
   await refreshSplits(offer._id.toString(), splits);
   await refreshRefunds(offer._id.toString());
+  await refreshWalletFunding(offer._id.toString(), wallet);
+  await refreshTransfers(offer._id.toString(), transfers);
   return getOffer(user, offerId);
 }
 
@@ -185,4 +204,114 @@ async function applyCardStatus(offer: OfferDocument, gateway: CardGateway, split
   if (status === "FAILED" || status === "CANCELLED") {
     await markCardPaymentFailed(payment.paymentIntentId, status);
   }
+}
+
+export async function payFromWallet(user: UserDocument, offerId: string, gateway: WalletGateway = liveWallet) {
+  if (!getServerConfig().walletRailEnabled) throw new InvalidState("Wallet payments aren't available.");
+  const offer = await loadOffer(offerId, user._id.toString());
+  if (!isBuyer(offer, user._id.toString()) || !offerActions(offer, "BUYER").some((action) => action === "ACCEPT_AND_PAY" || action === "CONTINUE_PAYMENT")) {
+    throw new InvalidState("That action isn't available.");
+  }
+  const pendingCard = await Payment.findOne({ offerId: offer._id, rail: "CARD", status: "PENDING" });
+  if (pendingCard) throw new InvalidState("Cancel the card payment before paying from the wallet.");
+  const accountId = user.airwallex.accountId;
+  if (!accountId) throw new InvalidState("Your Airwallex account isn't ready.");
+
+  const existing = await Payment.findOne({ offerId: offer._id, rail: "WALLET", chargeId: { $exists: true, $ne: null } }).sort({ attempt: -1 });
+  if (existing?.chargeId) {
+    if (existing.status === "FAILED") throw new InvalidState("The wallet payment failed.");
+    if (existing.status === "SUCCEEDED") {
+      await onFundingSucceeded(offer._id.toString());
+      return getOffer(user, offerId);
+    }
+    const retrieved = await gateway.retrieveCharge(existing.chargeId);
+    const status = readString(retrieved, "status") ?? "";
+    if (status === "SETTLED") {
+      await onFundingSucceeded(offer._id.toString());
+      return getOffer(user, offerId);
+    }
+    if (status === "FAILED" || status === "SUSPENDED") {
+      await markWalletChargeFailed(existing.chargeId);
+      throw new InvalidState("The wallet payment failed.");
+    }
+    return getOffer(user, offerId);
+  }
+
+  const balances = mapBalances(await gateway.currentBalances(accountId), offer.currency);
+  const available = balances[0]?.available.amountMinor ?? 0;
+  if (available < offer.totalMinor) throw new InsufficientBalance("Wallet balance is too low.");
+
+  // AIRWALLEX: charge reason is an enum, not free text. The human label goes in reference.
+  // https://www.airwallex.com/docs/api/scale/charges/create
+  const created = await gateway.createCharge({
+    amountMinor: offer.totalMinor,
+    currency: offer.currency,
+    source: accountId,
+    requestId: chargeRequestId(offer._id.toString()),
+    reason: "professional_business_services",
+    reference: `Escrow funding ${offer.shortRef}`,
+    relatedOfferId: offer._id.toString(),
+  });
+  const chargeId = readString(created, "id");
+  if (!chargeId) throw new Error("Airwallex did not return a charge.");
+  const status = readString(created, "status") ?? "PENDING";
+  const failed = status === "FAILED" || status === "SUSPENDED";
+  const payment = await Payment.create({
+    offerId: offer._id,
+    attempt: await nextAttempt(offer._id),
+    rail: "WALLET",
+    amountMinor: offer.totalMinor,
+    currency: offer.currency,
+    chargeId,
+    status: status === "SETTLED" ? "SUCCEEDED" : failed ? "FAILED" : "PENDING",
+    refundedMinor: 0,
+    ...(failed ? { failureReason: "Wallet payment failed." } : {}),
+  });
+  await Offer.findOneAndUpdate(
+    { _id: offer._id, buyerId: offer.buyerId, status: { $in: ["SENT", "AWAITING_PAYMENT"] } },
+    { $set: { status: "AWAITING_PAYMENT", fundingRail: "WALLET", paymentId: payment._id } },
+  );
+  if (status === "SETTLED") await onFundingSucceeded(offer._id.toString());
+  if (failed) {
+    await markWalletChargeFailed(chargeId);
+    throw new InvalidState("The wallet payment failed.");
+  }
+  return getOffer(user, offerId);
+}
+
+export async function markWalletChargeFailed(chargeId: string): Promise<string | undefined> {
+  await connectDb();
+  const payment = await Payment.findOneAndUpdate(
+    { chargeId, status: "PENDING" },
+    { $set: { status: "FAILED", failureReason: "Wallet payment failed." } },
+    { returnDocument: "after" },
+  );
+  const offerId = payment?.offerId ?? (await Payment.findOne({ chargeId }))?.offerId;
+  if (!offerId) return undefined;
+  const offer = await Offer.findOneAndUpdate(
+    { _id: offerId, status: "AWAITING_PAYMENT" },
+    { $set: { status: "SENT" }, $unset: { fundingRail: "" } },
+  );
+  if (offer) {
+    await Activity.create({
+      offerId,
+      actorId: offer.buyerId,
+      type: "PAYMENT_FAILED",
+      message: "Wallet payment failed.",
+    });
+  }
+  return offerId.toString();
+}
+
+async function refreshWalletFunding(offerId: string, gateway: WalletGateway): Promise<void> {
+  const payment = await Payment.findOne({ offerId, rail: "WALLET" }).sort({ attempt: -1 });
+  if (!payment?.chargeId || payment.status === "CANCELLED" || payment.status === "FAILED") return;
+  if (payment.status === "SUCCEEDED") {
+    await onFundingSucceeded(offerId);
+    return;
+  }
+  const retrieved = await gateway.retrieveCharge(payment.chargeId);
+  const status = readString(retrieved, "status") ?? "";
+  if (status === "SETTLED") await onFundingSucceeded(offerId);
+  else if (status === "FAILED" || status === "SUSPENDED") await markWalletChargeFailed(payment.chargeId);
 }

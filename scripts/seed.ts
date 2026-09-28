@@ -9,6 +9,7 @@ import { fromAwxAmount } from "@/lib/money";
 import { PlatformSettings } from "@/models/platformSettings";
 import { User } from "@/models/user";
 import { REVENUE_USER, SEED_USERS, type SeedUserSpec } from "./seed-data/users";
+import { seedOffers } from "./seed-offers";
 import { runProvisioning } from "@/services/provisioning";
 
 const BCRYPT_COST = 10;
@@ -153,8 +154,11 @@ async function main(): Promise<void> {
     rows.push(`${spec.email}  ${accountId}  READY  top-up ${spec.extraTopUpMajor}`);
   }
 
-  console.log("Seeded users (offers are created in a later step):");
+  const offerRows = await seedOffers();
+  console.log("Seeded users:");
   for (const row of rows) console.log(`  ${row}`);
+  console.log("Seeded offers:");
+  for (const row of offerRows) console.log(`  ${row}`);
 }
 
 main()

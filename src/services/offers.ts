@@ -65,6 +65,7 @@ async function insertSentOffer(input: {
   milestones: Array<{ title: string; description?: string; amountMinor: number; dueDate?: Date }>;
   isWelcomeOffer: boolean;
   activityMessage: string;
+  seedKey?: string;
 }): Promise<OfferDocument> {
   const milestones = input.milestones.map((milestone, index) => {
     const parts = breakdown(milestone.amountMinor, input.fee);
@@ -94,6 +95,7 @@ async function insertSentOffer(input: {
         status: "SENT",
         feeSnapshot: input.fee,
         isWelcomeOffer: input.isWelcomeOffer,
+        ...(input.seedKey ? { seedKey: input.seedKey } : {}),
         milestones,
         sentAt: new Date(),
       });
@@ -154,7 +156,7 @@ function buyerError(message: string): HttpError {
   return new HttpError(422, "VALIDATION_FAILED", message, { buyerId: [message] });
 }
 
-export async function createAndSend(seller: UserDocument, input: CreateOfferInput) {
+export async function createAndSend(seller: UserDocument, input: CreateOfferInput, seedKey?: string) {
   await connectDb();
   if (seller.airwallex.provisioning.step !== "READY") throw new ProvisioningIncomplete();
   if (!Types.ObjectId.isValid(input.buyerId)) throw buyerError("Choose a buyer who can receive offers.");
@@ -184,6 +186,7 @@ export async function createAndSend(seller: UserDocument, input: CreateOfferInpu
     })),
     isWelcomeOffer: false,
     activityMessage: `${seller.name} sent the offer`,
+    seedKey,
   });
   return present(offer, seller._id.toString());
 }

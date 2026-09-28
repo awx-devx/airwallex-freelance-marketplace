@@ -103,7 +103,7 @@ seed():
   print summary table: users, acct ids, balances, offers by state
 ```
 
-`scripts/seed.ts` currently runs through the user loop and the buyer top-up. The offer loop waits for the wallet rail.
+`scripts/seed.ts` funds the non-`SENT` offers on the wallet rail, then applies deliveries, approvals, and refunds until each offer matches the table.
 
 Add a `seedKey` field to offers (sparse unique index) for seed idempotency.
 

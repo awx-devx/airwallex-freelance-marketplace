@@ -5,7 +5,8 @@ import { AirwallexError } from "@/lib/airwallex/errors";
 import { createFundsSplit, createFundsSplitReversal, releaseFundsSplit, retrieveFundsSplit, type CreateFundsSplitInput, type CreateReversalInput } from "@/lib/airwallex/fundsSplits";
 import { readString, type JsonObject } from "@/lib/airwallex/json";
 import { createRefund, retrieveRefund, type CreateRefundInput } from "@/lib/airwallex/refunds";
-import { refundRequestId, releaseSplitRequestId, revenueSplitRequestId, reverseSplitRequestId, sellerSplitRequestId } from "@/lib/airwallex/requestIds";
+import { refundRequestId, releaseSplitRequestId, revenueSplitRequestId, revenueTransferRequestId, refundTransferRequestId, reverseSplitRequestId, sellerSplitRequestId, sellerTransferRequestId } from "@/lib/airwallex/requestIds";
+import { createConnectedAccountTransfer, retrieveConnectedAccountTransfer, type ScaleReason } from "@/lib/airwallex/wallet";
 import { connectDb } from "@/lib/db";
 import { Activity } from "@/models/activity";
 import { Offer, type OfferDocument } from "@/models/offer";
@@ -38,6 +39,14 @@ export type RefundGateway = {
 };
 
 const liveRefund: RefundGateway = { createRefund, createFundsSplitReversal, retrieveRefund };
+
+export type TransferGateway = {
+  createConnectedAccountTransfer: typeof createConnectedAccountTransfer;
+  retrieveConnectedAccountTransfer: typeof retrieveConnectedAccountTransfer;
+};
+
+const liveTransfers: TransferGateway = { createConnectedAccountTransfer, retrieveConnectedAccountTransfer };
+const TRANSFER_REASON: ScaleReason = "professional_business_services";
 
 const REFUNDABLE = new Set(["FUNDED", "SUBMITTED", "CHANGES_REQUESTED"]);
 const REFUND_RANK: Record<string, number> = { RECEIVED: 1, ACCEPTED: 2, SETTLED: 3 };
@@ -91,6 +100,14 @@ function viewerRole(offer: OfferDocument, userId: string): "BUYER" | "SELLER" {
  */
 export async function onFundingSucceeded(offerId: string, gateway: SplitGateway = liveSplits): Promise<void> {
   await connectDb();
+  const latest = await Payment.findOne({ offerId }).sort({ attempt: -1 });
+  if (latest?.rail === "WALLET" && (latest.status === "PENDING" || latest.status === "SUCCEEDED")) {
+    if (latest.status === "PENDING") {
+      await Payment.findOneAndUpdate({ _id: latest._id, status: "PENDING" }, { $set: { status: "SUCCEEDED" } });
+    }
+    await fundWalletMilestones(offerId);
+    return;
+  }
   const pending = await Payment.findOne({ offerId, rail: "CARD", status: "PENDING" }).sort({ attempt: -1 });
   if (pending) {
     await Payment.findOneAndUpdate({ _id: pending._id, status: "PENDING" }, { $set: { status: "SUCCEEDED" } });
@@ -187,6 +204,33 @@ export async function onFundingSucceeded(offerId: string, gateway: SplitGateway 
   await note(offerId, "SPLITS_CREATED", "Funds held in escrow", offer.buyerId.toString());
 }
 
+async function fundWalletMilestones(offerId: string): Promise<void> {
+  const offer = await Offer.findById(offerId);
+  if (!offer || (offer.status !== "AWAITING_PAYMENT" && offer.status !== "ACTIVE")) return;
+  for (const milestone of offer.milestones) {
+    if (milestone.status !== "PENDING_FUNDING") continue;
+    await Offer.findOneAndUpdate(
+      { _id: offer._id, milestones: { $elemMatch: { _id: milestone._id, status: "PENDING_FUNDING" } } },
+      { $set: { "milestones.$.status": "FUNDED" } },
+    );
+  }
+  const current = await Offer.findById(offerId);
+  if (!current || current.milestones.some((milestone) => milestone.status === "PENDING_FUNDING")) return;
+  const activated = await Offer.findOneAndUpdate(
+    { _id: offerId, status: "AWAITING_PAYMENT" },
+    {
+      $set: {
+        status: "ACTIVE",
+        fundingRail: "WALLET",
+        fundedAt: new Date(),
+        acceptedAt: current.acceptedAt ?? new Date(),
+      },
+    },
+  );
+  if (!activated) return;
+  await note(offerId, "PAYMENT_SUCCEEDED", "Payment received from wallet", offer.buyerId.toString());
+}
+
 export async function advanceSplitStatus(splitId: string, next: string): Promise<string | undefined> {
   await connectDb();
   const status = knownSplitStatus(next);
@@ -271,15 +315,21 @@ async function markReleaseFailed(offerId: string, milestoneId: Types.ObjectId, m
   );
 }
 
-/** A milestone is paid when every card-rail split has settled. Then the offer can complete. */
+/** A milestone is paid when every release leg has settled: card splits, or wallet transfers. Then the offer can complete. */
 export async function maybeMarkPaid(offerId: string): Promise<void> {
   const offer = await Offer.findById(offerId);
   if (!offer) return;
   for (const milestone of offer.milestones) {
     if (milestone.status !== "RELEASING") continue;
-    const sellerSettled = milestone.escrow?.sellerSplit?.status === "SETTLED";
-    const revenue = milestone.escrow?.revenueSplit;
-    const revenueSettled = milestone.breakdown.revenueMinor === 0 || revenue?.status === "SETTLED";
+    const sellerSettled =
+      offer.fundingRail === "WALLET"
+        ? milestone.escrow?.sellerTransfer?.status === "SETTLED"
+        : milestone.escrow?.sellerSplit?.status === "SETTLED";
+    const revenueTransfer = milestone.escrow?.revenueTransfer;
+    const revenueSplit = milestone.escrow?.revenueSplit;
+    const revenueSettled =
+      milestone.breakdown.revenueMinor === 0 ||
+      (offer.fundingRail === "WALLET" ? revenueTransfer?.status === "SETTLED" : revenueSplit?.status === "SETTLED");
     if (!sellerSettled || !revenueSettled) continue;
     const paid = await Offer.findOneAndUpdate(
       { _id: offer._id, milestones: { $elemMatch: { _id: milestone._id, status: "RELEASING" } } },
@@ -320,13 +370,13 @@ export async function approveMilestone(
   offerId: string,
   milestoneId: string,
   gateway: ReleaseGateway = liveRelease,
+  transfers: TransferGateway = liveTransfers,
 ) {
   const offer = await loadParticipant(offerId, user._id.toString());
   const milestone = milestoneOf(offer, milestoneId);
   if (!milestoneActions(milestone, offer, viewerRole(offer, user._id.toString())).includes("APPROVE")) {
     throw new InvalidState("That action isn't available.");
   }
-  if (offer.fundingRail !== "CARD") throw new InvalidState("Wallet release isn't available yet.");
 
   const deliveries = milestone.deliveries.map((delivery, index) => ({
     _id: delivery._id,
@@ -352,7 +402,8 @@ export async function approveMilestone(
   );
   if (!claimed) throw new InvalidState("That action isn't available.");
   await note(offerId, "MILESTONE_APPROVED", `${user.name} approved ${milestone.title}`, user._id.toString(), milestoneId);
-  await releaseHeldSplits(offerId, milestoneId, gateway);
+  if (offer.fundingRail === "WALLET") await releaseWalletTransfers(offerId, milestoneId, transfers);
+  else await releaseHeldSplits(offerId, milestoneId, gateway);
   return getOffer(user, offerId);
 }
 
@@ -362,6 +413,7 @@ export async function retryMilestone(
   milestoneId: string,
   gateway: ReleaseGateway = liveRelease,
   refund: RefundGateway = liveRefund,
+  transfers: TransferGateway = liveTransfers,
 ) {
   const offer = await loadParticipant(offerId, user._id.toString());
   const milestone = milestoneOf(offer, milestoneId);
@@ -377,7 +429,8 @@ export async function retryMilestone(
       { $set: { "milestones.$.status": "REFUNDING" }, $unset: { "milestones.$.lastError": "" } },
     );
     if (!claimed) throw new InvalidState("That action isn't available.");
-    await executeRefund(offer._id.toString(), milestone._id.toString(), refund);
+    if (offer.fundingRail === "WALLET") await executeWalletRefund(offer._id.toString(), milestone._id.toString(), transfers);
+    else await executeRefund(offer._id.toString(), milestone._id.toString(), refund);
     return getOffer(user, offerId);
   }
   const claimed = await Offer.findOneAndUpdate(
@@ -388,7 +441,8 @@ export async function retryMilestone(
     { $set: { "milestones.$.status": "RELEASING" }, $unset: { "milestones.$.lastError": "" } },
   );
   if (!claimed) throw new InvalidState("That action isn't available.");
-  await releaseHeldSplits(offerId, milestoneId, gateway);
+  if (offer.fundingRail === "WALLET") await releaseWalletTransfers(offerId, milestoneId, transfers);
+  else await releaseHeldSplits(offerId, milestoneId, gateway);
   return getOffer(user, offerId);
 }
 
@@ -581,13 +635,13 @@ export async function refundMilestone(
   milestoneId: string,
   input: CancelReasonInput = {},
   gateway: RefundGateway = liveRefund,
+  transfers: TransferGateway = liveTransfers,
 ) {
   const offer = await loadParticipant(offerId, user._id.toString());
   const milestone = milestoneOf(offer, milestoneId);
   if (!milestoneActions(milestone, offer, viewerRole(offer, user._id.toString())).includes("CANCEL")) {
     throw new InvalidState("That action isn't available.");
   }
-  if (offer.fundingRail !== "CARD") throw new InvalidState("Wallet refunds aren't available yet.");
   const claimed = await claimRefund(offer, milestone._id);
   if (!claimed) throw new InvalidState("That action isn't available.");
   const reason = input.reason?.trim();
@@ -598,7 +652,8 @@ export async function refundMilestone(
     user._id.toString(),
     milestoneId,
   );
-  await executeRefund(offerId, milestoneId, gateway);
+  if (offer.fundingRail === "WALLET") await executeWalletRefund(offerId, milestoneId, transfers);
+  else await executeRefund(offerId, milestoneId, gateway);
   return getOffer(user, offerId);
 }
 
@@ -607,12 +662,12 @@ export async function cancelRemaining(
   offerId: string,
   input: CancelReasonInput = {},
   gateway: RefundGateway = liveRefund,
+  transfers: TransferGateway = liveTransfers,
 ) {
   const offer = await loadParticipant(offerId, user._id.toString());
   if (!offerActions(offer, viewerRole(offer, user._id.toString())).includes("CANCEL_REMAINING")) {
     throw new InvalidState("That action isn't available.");
   }
-  if (offer.fundingRail !== "CARD") throw new InvalidState("Wallet refunds aren't available yet.");
   const reason = input.reason?.trim();
   const current = await Offer.findById(offer._id);
   for (const milestone of current?.milestones ?? []) {
@@ -626,7 +681,8 @@ export async function cancelRemaining(
       user._id.toString(),
       milestone._id.toString(),
     );
-    await executeRefund(offerId, milestone._id.toString(), gateway);
+    if (offer.fundingRail === "WALLET") await executeWalletRefund(offerId, milestone._id.toString(), transfers);
+    else await executeRefund(offerId, milestone._id.toString(), gateway);
   }
   return getOffer(user, offerId);
 }
@@ -640,5 +696,190 @@ export async function refreshRefunds(offerId: string, gateway: RefundGateway = l
     const latest = await gateway.retrieveRefund(refundId);
     const status = readString(latest, "status");
     if (status) await advanceRefundStatus(refundId, status, milestone._id.toString());
+  }
+}
+
+const TRANSFER_RANK: Record<string, number> = { NEW: 1, PENDING: 2, SETTLED: 3 };
+const TRANSFER_STATUSES = new Set(["NEW", "PENDING", "SETTLED", "SUSPENDED", "FAILED"]);
+
+function knownTransferStatus(value: string | undefined): "NEW" | "PENDING" | "SETTLED" | "SUSPENDED" | "FAILED" | undefined {
+  if (value && TRANSFER_STATUSES.has(value)) return value as "NEW" | "PENDING" | "SETTLED" | "SUSPENDED" | "FAILED";
+  return undefined;
+}
+
+function canAdvanceTransfer(current: string, next: string): boolean {
+  if (!TRANSFER_STATUSES.has(next) || current === next) return false;
+  if (next === "FAILED" || next === "SUSPENDED") return current === "NEW" || current === "PENDING";
+  return (TRANSFER_RANK[next] ?? 0) > (TRANSFER_RANK[current] ?? 0);
+}
+
+async function storeTransfer(
+  offerId: string,
+  milestoneId: Types.ObjectId,
+  side: "sellerTransfer" | "revenueTransfer" | "refundTransfer",
+  transfer: { transferId: string; amountMinor: number; destination: string; status: string },
+): Promise<void> {
+  await Offer.updateOne(
+    { _id: offerId, milestones: { $elemMatch: { _id: milestoneId, [`escrow.${side}.transferId`]: { $exists: false } } } },
+    { $set: { [`milestones.$.escrow.${side}`]: transfer } },
+  );
+}
+
+export async function advanceTransferStatus(transferId: string, next: string): Promise<string | undefined> {
+  await connectDb();
+  const status = knownTransferStatus(next);
+  if (!status) return undefined;
+  const offer = await Offer.findOne({
+    $or: [
+      { "milestones.escrow.sellerTransfer.transferId": transferId },
+      { "milestones.escrow.revenueTransfer.transferId": transferId },
+      { "milestones.escrow.refundTransfer.transferId": transferId },
+    ],
+  });
+  if (!offer) return undefined;
+  for (const milestone of offer.milestones) {
+    for (const side of ["sellerTransfer", "revenueTransfer", "refundTransfer"] as const) {
+      const current = milestone.escrow?.[side];
+      if (current?.transferId !== transferId || !canAdvanceTransfer(current.status, status)) continue;
+      await Offer.updateOne(
+        {
+          _id: offer._id,
+          milestones: { $elemMatch: { [`escrow.${side}.transferId`]: transferId, [`escrow.${side}.status`]: current.status } },
+        },
+        { $set: { [`milestones.$.escrow.${side}.status`]: status } },
+      );
+      if ((side === "sellerTransfer" || side === "revenueTransfer") && (status === "FAILED" || status === "SUSPENDED")) {
+        await markReleaseFailed(offer._id.toString(), milestone._id, "The wallet transfer did not settle.");
+      }
+      if (side === "refundTransfer" && (status === "FAILED" || status === "SUSPENDED")) {
+        await markRefundFailed(offer._id.toString(), milestone._id, "The refund transfer did not settle.");
+      }
+      if (side === "refundTransfer" && status === "SETTLED") {
+        await markRefunded(offer._id.toString(), milestone._id, milestone.title);
+      }
+    }
+  }
+  if (status === "SETTLED") await maybeMarkPaid(offer._id.toString());
+  return offer._id.toString();
+}
+
+async function openTransfer(
+  gateway: TransferGateway,
+  input: { amountMinor: number; currency: string; destination: string; requestId: string; reference: string; offerId: string },
+): Promise<{ transferId: string; status: string }> {
+  const created = await gateway.createConnectedAccountTransfer({
+    amountMinor: input.amountMinor,
+    currency: input.currency,
+    destination: input.destination,
+    requestId: input.requestId,
+    reason: TRANSFER_REASON,
+    reference: input.reference.slice(0, 140),
+    relatedOfferId: input.offerId,
+  });
+  const transferId = readString(created, "id");
+  if (!transferId) throw new Error("Connected account transfer did not return an id.");
+  return { transferId, status: knownTransferStatus(readString(created, "status")) ?? "PENDING" };
+}
+
+async function releaseWalletTransfers(offerId: string, milestoneId: string, gateway: TransferGateway): Promise<void> {
+  const offer = await Offer.findById(offerId);
+  const milestone = offer?.milestones.find((item) => item._id.toString() === milestoneId);
+  if (!offer || !milestone) return;
+  try {
+    const [seller, settings] = await Promise.all([User.findById(offer.sellerId), PlatformSettings.findById("default")]);
+    const sellerAccount = seller?.airwallex.accountId;
+    const revenueAccount = settings?.revenueAccountId;
+    if (!sellerAccount || !revenueAccount) throw new Error("Cannot release funds: the seller or the revenue account is missing.");
+    const sellerTransfer = await openTransfer(gateway, {
+      amountMinor: milestone.breakdown.sellerMinor,
+      currency: offer.currency,
+      destination: sellerAccount,
+      requestId: sellerTransferRequestId(milestoneId),
+      reference: `${offer.shortRef} ${milestone.title}`,
+      offerId,
+    });
+    await storeTransfer(offerId, milestone._id, "sellerTransfer", {
+      transferId: sellerTransfer.transferId,
+      amountMinor: milestone.breakdown.sellerMinor,
+      destination: sellerAccount,
+      status: "NEW",
+    });
+    await advanceTransferStatus(sellerTransfer.transferId, sellerTransfer.status);
+    if (milestone.breakdown.revenueMinor > 0) {
+      const revenueTransfer = await openTransfer(gateway, {
+        amountMinor: milestone.breakdown.revenueMinor,
+        currency: offer.currency,
+        destination: revenueAccount,
+        requestId: revenueTransferRequestId(milestoneId),
+        reference: `${offer.shortRef} ${milestone.title} fee`,
+        offerId,
+      });
+      await storeTransfer(offerId, milestone._id, "revenueTransfer", {
+        transferId: revenueTransfer.transferId,
+        amountMinor: milestone.breakdown.revenueMinor,
+        destination: revenueAccount,
+        status: "NEW",
+      });
+      await advanceTransferStatus(revenueTransfer.transferId, revenueTransfer.status);
+    }
+    await note(offerId, "FUNDS_RELEASED", `Funds released for ${milestone.title}`, offer.buyerId.toString(), milestoneId);
+    await maybeMarkPaid(offerId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Release failed.";
+    await Offer.updateOne(
+      { _id: offerId, milestones: { $elemMatch: { _id: milestone._id, status: "RELEASING" } } },
+      { $set: { "milestones.$.lastError": message } },
+    );
+  }
+}
+
+async function executeWalletRefund(offerId: string, milestoneId: string, gateway: TransferGateway): Promise<void> {
+  const offer = await Offer.findById(offerId);
+  const milestone = offer?.milestones.find((item) => item._id.toString() === milestoneId);
+  if (!offer || !milestone) return;
+  try {
+    const buyer = await User.findById(offer.buyerId);
+    const destination = buyer?.airwallex.accountId;
+    if (!destination) throw new Error("The buyer's Airwallex account isn't ready.");
+    const transfer = await openTransfer(gateway, {
+      amountMinor: milestone.amountMinor,
+      currency: offer.currency,
+      destination,
+      requestId: refundTransferRequestId(milestoneId),
+      reference: `Refund ${offer.shortRef} ${milestone.title}`,
+      offerId,
+    });
+    await storeTransfer(offerId, milestone._id, "refundTransfer", {
+      transferId: transfer.transferId,
+      amountMinor: milestone.amountMinor,
+      destination,
+      status: "NEW",
+    });
+    await advanceTransferStatus(transfer.transferId, transfer.status);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Refund failed.";
+    await Offer.updateOne(
+      { _id: offerId, milestones: { $elemMatch: { _id: milestone._id, status: "REFUNDING" } } },
+      { $set: { "milestones.$.lastError": message } },
+    );
+  }
+}
+
+export async function refreshTransfers(offerId: string, gateway: TransferGateway = liveTransfers): Promise<void> {
+  const offer = await Offer.findById(offerId);
+  if (!offer || offer.fundingRail !== "WALLET") return;
+  for (const milestone of offer.milestones) {
+    if (milestone.status !== "RELEASING" && milestone.status !== "REFUNDING") continue;
+    const ids = [
+      milestone.escrow?.sellerTransfer?.transferId,
+      milestone.escrow?.revenueTransfer?.transferId,
+      milestone.escrow?.refundTransfer?.transferId,
+    ];
+    for (const transferId of ids) {
+      if (!transferId) continue;
+      const latest = await gateway.retrieveConnectedAccountTransfer(transferId);
+      const status = readString(latest, "status");
+      if (status) await advanceTransferStatus(transferId, status);
+    }
   }
 }

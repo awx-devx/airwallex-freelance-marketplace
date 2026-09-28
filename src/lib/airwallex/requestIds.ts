@@ -45,6 +45,14 @@ export function sellerTransferRequestId(milestoneId: string): string {
   return assertRequestId(`cat:${milestoneId}:seller`, SCALE_MAX);
 }
 
+export function revenueTransferRequestId(milestoneId: string): string {
+  return assertRequestId(`cat:${milestoneId}:rev`, SCALE_MAX);
+}
+
+export function refundTransferRequestId(milestoneId: string): string {
+  return assertRequestId(`cat:${milestoneId}:refund`, SCALE_MAX);
+}
+
 export function welcomeCreditRequestId(userId: string): string {
   return assertRequestId(`welcome:${userId}`, SCALE_MAX);
 }

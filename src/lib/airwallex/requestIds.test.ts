@@ -4,7 +4,9 @@ import {
   paymentIntentRequestId,
   refundRequestId,
   releaseSplitRequestId,
+  refundTransferRequestId,
   revenueSplitRequestId,
+  revenueTransferRequestId,
   reverseSplitRequestId,
   sellerSplitRequestId,
   sellerTransferRequestId,
@@ -26,6 +28,8 @@ describe("request ids", () => {
     expect(refundRequestId(milestoneId)).toBe(`rf:${milestoneId}`);
     expect(chargeRequestId(offerId)).toBe(`ch:${offerId}`);
     expect(sellerTransferRequestId(milestoneId)).toBe(`cat:${milestoneId}:seller`);
+    expect(revenueTransferRequestId(milestoneId)).toBe(`cat:${milestoneId}:rev`);
+    expect(refundTransferRequestId(milestoneId)).toBe(`cat:${milestoneId}:refund`);
     expect(welcomeCreditRequestId(offerId)).toBe(`welcome:${offerId}`);
     expect(seedTopUpRequestId(offerId, 1)).toBe(`seedtopup:${offerId}:1`);
 
