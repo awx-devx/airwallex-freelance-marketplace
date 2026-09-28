@@ -4,6 +4,8 @@ import { AccountStatusSchema, DemoAccountSchema, ProvisioningStepSchema } from "
 const ProvisioningSchema = new Schema(
   {
     step: { type: String, enum: ProvisioningStepSchema.options, required: true, default: "NONE" },
+    /** The checklist step that stopped, set only while `step` is `FAILED`. */
+    failedStep: { type: String, enum: ["ACCOUNT_CREATED", "SUBMITTED", "ACTIVE", "WELCOME_CREDITED", "READY"] },
     lastError: String,
     updatedAt: { type: Date, required: true, default: () => new Date() },
   },
@@ -53,6 +55,7 @@ export type UserDocument = {
     accountStatus?: "CREATED" | "SUBMITTED" | "ACTIVE" | "ACTION_REQUIRED" | "SUSPENDED";
     provisioning: {
       step: "NONE" | "ACCOUNT_CREATED" | "SUBMITTED" | "ACTIVE" | "WELCOME_CREDITED" | "READY" | "FAILED";
+      failedStep?: "ACCOUNT_CREATED" | "SUBMITTED" | "ACTIVE" | "WELCOME_CREDITED" | "READY";
       lastError?: string;
       updatedAt: Date;
     };

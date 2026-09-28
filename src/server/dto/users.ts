@@ -45,6 +45,7 @@ export function toMe(user: UserView, isGuest: boolean): MeDTO {
     provisioning: {
       step: user.airwallex.provisioning.step,
       error: user.airwallex.provisioning.lastError || undefined,
+      failedStep: user.airwallex.provisioning.step === "FAILED" ? user.airwallex.provisioning.failedStep : undefined,
     },
   });
 }

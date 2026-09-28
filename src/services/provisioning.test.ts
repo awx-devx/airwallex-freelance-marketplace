@@ -10,7 +10,7 @@ import { Activity } from "@/models/activity";
 import { Offer } from "@/models/offer";
 import { PlatformSettings } from "@/models/platformSettings";
 import { User } from "@/models/user";
-import { runProvisioning, type ProvisioningClient } from "@/services/provisioning";
+import { provisioningErrorMessage, runProvisioning, type ProvisioningClient } from "@/services/provisioning";
 
 let mongo: MongoMemoryServer;
 
@@ -113,6 +113,7 @@ describe("runProvisioning", () => {
     const client = fakeClient();
     const failed = await runProvisioning(buyer._id.toString(), client);
     expect(failed.airwallex.provisioning.step).toBe("FAILED");
+    expect(failed.airwallex.provisioning.failedStep).toBe("READY");
     expect(failed.airwallex.provisioning.lastError).toMatch(/npm run seed/);
     expect(failed.airwallex.accountId).toBe(`acct_${buyer._id.toString()}`);
   });
@@ -146,6 +147,75 @@ describe("runProvisioning", () => {
     expect(ready.airwallex.provisioning.lastError).toBeUndefined();
     expect(client.calls.some((call) => call.startsWith("create:"))).toBe(false);
     expect(client.calls.some((call) => call.startsWith("transfer:"))).toBe(true);
+  });
+
+  it("records the activation step when sandbox activation fails", async () => {
+    const seller = await user({ email: "maya@demo.test", name: "Maya Chen", kind: "SEED", demoRole: "Seller" });
+    const client = fakeClient({
+      async retrieveAccount(accountId) {
+        return { id: accountId, status: "SUBMITTED" };
+      },
+      async forceAccountStatus() {
+        throw new Error("activation rejected");
+      },
+    });
+    const failed = await runProvisioning(seller._id.toString(), client);
+    expect(failed.airwallex.provisioning.step).toBe("FAILED");
+    expect(failed.airwallex.provisioning.failedStep).toBe("ACTIVE");
+    expect(failed.airwallex.provisioning.lastError).toBe("activation rejected");
+    expect(failed.airwallex.accountStatus).toBe("SUBMITTED");
+  });
+
+  it("explains a just-submitted account in plain language", () => {
+    expect(provisioningErrorMessage(new Error("Account needs to be submitted for review before using this endpoint"))).toMatch(
+      /wasn't ready to activate/,
+    );
+  });
+
+  it("does not start a second run while the first is still in flight", async () => {
+    const seller = await user({ email: "maya@demo.test", name: "Maya Chen", kind: "SEED", demoRole: "Seller" });
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let creates = 0;
+    const client = fakeClient({
+      async createAccount(body) {
+        creates += 1;
+        await gate;
+        return { id: `acct_${String(body.identifier)}`, status: "CREATED" };
+      },
+    });
+    const first = runProvisioning(seller._id.toString(), client);
+    const deadline = Date.now() + 2_000;
+    while (creates === 0 && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    const second = await runProvisioning(seller._id.toString(), client);
+    expect(second.airwallex.provisioning.step).toBe("NONE");
+    release();
+    const ready = await first;
+    expect(ready.airwallex.provisioning.step).toBe("READY");
+    expect(creates).toBe(1);
+  });
+
+  it("retries sandbox activation when the account was only just submitted", async () => {
+    const seller = await user({ email: "maya@demo.test", name: "Maya Chen", kind: "SEED", demoRole: "Seller" });
+    let forces = 0;
+    const client = fakeClient({
+      async retrieveAccount(accountId) {
+        return { id: accountId, status: forces > 0 ? "ACTIVE" : "SUBMITTED" };
+      },
+      async forceAccountStatus(accountId) {
+        forces += 1;
+        if (forces === 1) throw new Error("Account needs to be submitted for review before using this endpoint");
+        return { id: accountId, status: "ACTIVE" };
+      },
+    });
+    const ready = await runProvisioning(seller._id.toString(), client);
+    expect(ready.airwallex.provisioning.step, ready.airwallex.provisioning.lastError).toBe("READY");
+    expect(ready.airwallex.accountStatus).toBe("ACTIVE");
+    expect(forces).toBe(2);
   });
 
   it("uses the seed version in the connected-account identifier", async () => {

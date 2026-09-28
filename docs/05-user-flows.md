@@ -25,7 +25,7 @@ Each flow lists **UI**, **server**, **Airwallex**, and **DB** effects. Airwallex
 | Welcome credit | `POST /connected_account_transfers/create` (`WELCOME_CREDIT_AMOUNT`) | step `WELCOME_CREDITED` |
 | Welcome offer | – | create an offer from a random `SEED` seller (see [08](./08-seeding.md#welcome-offer-templates)); step `READY` |
 
-**UI states:** a checklist that ticks as steps finish ("Creating your Airwallex account… Activating… Adding $5,000 demo credit… Preparing your first offer…"). On `FAILED`, show the error and a **Retry** button (re-runs from the failed step).
+**UI states:** a checklist that ticks as steps finish ("Creating your Airwallex account… Activating… Adding $5,000 demo credit… Preparing your first offer…"). On `FAILED`, mark `failedStep`, show the error, and offer **Retry**. Retry calls the same `runProvisioning` as `npm run seed`: it resumes from the stored account and does not create a second one. Sandbox activation is retried for about 20 seconds when Airwallex says the account was only just submitted. Leaving `/welcome` and coming back keeps polling until the in-flight run finishes.
 
 `// DEMO-ONLY:` Provisioning runs inline in the request/poll cycle. `// PROD:` Run it as a background job, and treat account activation as asynchronous (real KYC can take days).
 

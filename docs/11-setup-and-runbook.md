@@ -84,7 +84,7 @@ Without a tunnel, the app falls back to polling via the sync endpoint.
 | `accounts/create` → 403 / `operation_not_supported` | Connected accounts not enabled on the platform account. Contact Airwallex (setup step 2). |
 | `submit` fails with `field_required` | The business payload is missing `business_person_details[0].identifications.primary`. Use `accountCreateBody` in `identity-fixture.ts`. Force-activate only after status is `SUBMITTED`. |
 | Funds Split → `Individual account funds split is only supported for the model 2.1` | This sandbox is model 2.2, so the destination must be `BUSINESS`. Individual sellers need the platform moved to model 2.1. See [03 §2](./03-airwallex-integration.md#gateway-models-21-and-22). |
-| `simulation/.../update_status` fails | Account must be in `SUBMITTED` first. |
+| `simulation/.../update_status` fails | Account must be in `SUBMITTED` first. A just-submitted account can reject activation for a few seconds; provisioning retries for 20s. |
 | Funds Split create → `operation_not_supported` | Funds Split not enabled, **or** created after settlement. Check timing and account config. Set `ENABLE_WALLET_RAIL=true` and use the wallet rail as the fallback. |
 | Funds Split create → validation error on destination | Destination CA not `ACTIVE` / not KYC-passed, or not eligible tier. |
 | Release → `invalid_status_for_operation` | Split already released or `auto_release` was true. |

@@ -74,7 +74,11 @@ type MeDTO = UserSummaryDTO & {
     accountId?: string;         // acct_...
     accountStatus?: 'CREATED' | 'SUBMITTED' | 'ACTIVE' | 'ACTION_REQUIRED' | 'SUSPENDED';
   };
-  provisioning: { step: ProvisioningStep; error?: string };
+  provisioning: {
+    step: ProvisioningStep;
+    error?: string;
+    failedStep?: 'ACCOUNT_CREATED' | 'SUBMITTED' | 'ACTIVE' | 'WELCOME_CREDITED' | 'READY';
+  };
 };
 
 type PublicConfigDTO = {

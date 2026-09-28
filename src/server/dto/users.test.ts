@@ -21,12 +21,12 @@ describe("user DTOs", () => {
         airwallex: {
           accountId: "acct_123",
           accountStatus: "ACTIVE",
-          provisioning: { step: "FAILED", lastError: "submit failed", updatedAt: new Date() },
+          provisioning: { step: "FAILED", failedStep: "SUBMITTED", lastError: "submit failed", updatedAt: new Date() },
         },
       },
       false,
     );
-    expect(me.provisioning).toEqual({ step: "FAILED", error: "submit failed" });
+    expect(me.provisioning).toEqual({ step: "FAILED", failedStep: "SUBMITTED", error: "submit failed" });
     expect(me.isGuest).toBe(false);
     expect(me.initials).toBe("MC");
   });

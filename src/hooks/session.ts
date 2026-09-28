@@ -15,7 +15,7 @@ export function usePublicConfig() {
   });
 }
 
-export function useMe(options?: { refetchInterval?: number | false }) {
+export function useMe(options?: { refetchInterval?: number | false; keepPolling?: boolean }) {
   return useQuery({
     queryKey: qk.me,
     queryFn: async () => {
@@ -28,6 +28,7 @@ export function useMe(options?: { refetchInterval?: number | false }) {
     },
     refetchInterval: (query) => {
       if (!options?.refetchInterval) return false;
+      if (options.keepPolling) return options.refetchInterval;
       const step = query.state.data?.provisioning.step;
       if (!step || step === "READY" || step === "FAILED") return false;
       return options.refetchInterval;

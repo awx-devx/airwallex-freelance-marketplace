@@ -14,6 +14,7 @@ import { seedIdentifier } from "../../scripts/seed-data/users";
 import { createWelcomeOffer } from "@/services/offers";
 
 const ACCOUNT_STATUSES = new Set(["CREATED", "SUBMITTED", "ACTIVE", "ACTION_REQUIRED", "SUSPENDED"]);
+type ChecklistStep = "ACCOUNT_CREATED" | "SUBMITTED" | "ACTIVE" | "WELCOME_CREDITED" | "READY";
 const TERMINAL_TRANSFER = new Set(["SETTLED", "FAILED", "SUSPENDED"]);
 const running = new Set<string>();
 
@@ -58,6 +59,32 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function needsSubmitRetry(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : "";
+  return message.toLowerCase().includes("submitted");
+}
+
+async function forceUntilActive(client: ProvisioningClient, accountId: string): Promise<"ACTIVE"> {
+  const deadline = Date.now() + 20_000;
+  let last: unknown;
+  while (Date.now() < deadline) {
+    try {
+      const activated = await client.forceAccountStatus(accountId);
+      const next = knownStatus(accountStatusOf(activated));
+      if (next === "ACTIVE") return "ACTIVE";
+      const retrieved = knownStatus(accountStatusOf(await client.retrieveAccount(accountId)));
+      if (retrieved === "ACTIVE") return "ACTIVE";
+      last = new Error(`Connected account ${accountId} did not become ACTIVE (status ${next ?? retrieved ?? "unknown"}).`);
+    } catch (error) {
+      last = error;
+      if (!needsSubmitRetry(error)) throw error;
+    }
+    await sleep(2_000);
+  }
+  if (last instanceof Error) throw last;
+  throw new Error(`Connected account ${accountId} did not become ACTIVE.`);
+}
+
 async function waitUntilSettled(client: ProvisioningClient, transferId: string): Promise<void> {
   const deadline = Date.now() + 20_000;
   let latest = await client.retrieveTransfer(transferId);
@@ -77,21 +104,32 @@ async function waitUntilSettled(client: ProvisioningClient, transferId: string):
 async function save(userId: string, fields: Record<string, unknown>): Promise<UserDocument> {
   const user = await User.findByIdAndUpdate(
     userId,
-    { $set: { ...fields, "airwallex.provisioning.updatedAt": new Date() }, $unset: { "airwallex.provisioning.lastError": "" } },
+    {
+      $set: { ...fields, "airwallex.provisioning.updatedAt": new Date() },
+      $unset: { "airwallex.provisioning.lastError": "", "airwallex.provisioning.failedStep": "" },
+    },
     { returnDocument: "after" },
   );
   if (!user) throw new Error("User disappeared during provisioning.");
   return user;
 }
 
-async function fail(userId: string, error: unknown): Promise<UserDocument> {
+export function provisioningErrorMessage(error: unknown): string {
   const message = error instanceof Error ? error.message : "Provisioning failed.";
+  if (message.toLowerCase().includes("submitted for review")) {
+    return "Airwallex wasn't ready to activate the account yet. Retry, and we'll continue from this step.";
+  }
+  return message;
+}
+
+async function fail(userId: string, error: unknown, failedStep: ChecklistStep): Promise<UserDocument> {
   const user = await User.findByIdAndUpdate(
     userId,
     {
       $set: {
         "airwallex.provisioning.step": "FAILED",
-        "airwallex.provisioning.lastError": message,
+        "airwallex.provisioning.failedStep": failedStep,
+        "airwallex.provisioning.lastError": provisioningErrorMessage(error),
         "airwallex.provisioning.updatedAt": new Date(),
       },
     },
@@ -118,24 +156,31 @@ export async function runProvisioning(userId: string, client: ProvisioningClient
   await connectDb();
   const initial = await User.findById(userId);
   if (!initial) throw new Error("User not found.");
-  if (initial.airwallex.provisioning.step === "READY" || running.has(userId)) return initial;
+  if (initial.airwallex.provisioning.step === "READY") return initial;
+  if (running.has(userId)) return (await User.findById(userId)) ?? initial;
 
+  const progress: { step: ChecklistStep } = { step: "ACCOUNT_CREATED" };
   running.add(userId);
   try {
-    return await withAirwallexContext({ relatedUserId: userId }, () => advance(initial, client));
+    return await withAirwallexContext({ relatedUserId: userId }, () => advance(initial, client, progress));
   } catch (error) {
-    return fail(userId, error);
+    return fail(userId, error, progress.step);
   } finally {
     running.delete(userId);
   }
 }
 
-async function advance(start: UserDocument, client: ProvisioningClient): Promise<UserDocument> {
+async function advance(
+  start: UserDocument,
+  client: ProvisioningClient,
+  progress: { step: ChecklistStep },
+): Promise<UserDocument> {
   let user = start;
   const userId = user._id.toString();
   let accountId = user.airwallex.accountId;
   let status = user.airwallex.accountStatus;
 
+  progress.step = "ACCOUNT_CREATED";
   if (!accountId) {
     const identity = identityForAccount({
       role: user.kind === "REVENUE" ? "revenue" : "seller",
@@ -157,6 +202,7 @@ async function advance(start: UserDocument, client: ProvisioningClient): Promise
     });
   }
 
+  progress.step = "SUBMITTED";
   if (status !== "SUBMITTED" && status !== "ACTIVE") {
     const submitted = await client.submitAccount(accountId);
     status = knownStatus(accountStatusOf(submitted)) ?? "SUBMITTED";
@@ -166,17 +212,19 @@ async function advance(start: UserDocument, client: ProvisioningClient): Promise
     });
   }
 
+  progress.step = "ACTIVE";
   if (status !== "ACTIVE") {
-    // SANDBOX: force-activates the connected account, skipping KYC review.
-    const activated = await client.forceAccountStatus(accountId);
-    status = knownStatus(accountStatusOf(activated)) ?? knownStatus(accountStatusOf(await client.retrieveAccount(accountId)));
-    if (status !== "ACTIVE") throw new Error(`Connected account ${accountId} did not become ACTIVE (status ${status ?? "unknown"}).`);
+    const current = knownStatus(accountStatusOf(await client.retrieveAccount(accountId)));
+    // SANDBOX: simulation/update_status can reject a just-submitted account for a few seconds.
+    // https://www.airwallex.com/docs/developer-tools/sandbox-environment/connected-accounts/simulate-connected-account-status-transition
+    status = current === "ACTIVE" ? "ACTIVE" : await forceUntilActive(client, accountId);
     user = await save(userId, {
       "airwallex.accountStatus": "ACTIVE",
       "airwallex.provisioning.step": "ACTIVE",
     });
   }
 
+  progress.step = "WELCOME_CREDITED";
   if (user.kind !== "REVENUE" && user.airwallex.provisioning.step !== "WELCOME_CREDITED" && user.airwallex.provisioning.step !== "READY") {
     const config = getServerConfig();
     const transfer = await client.createTransfer({
@@ -191,6 +239,7 @@ async function advance(start: UserDocument, client: ProvisioningClient): Promise
     user = await save(userId, { "airwallex.provisioning.step": "WELCOME_CREDITED" });
   }
 
+  progress.step = "READY";
   if (user.kind === "REGULAR") {
     await createWelcomeOffer(userId);
   }

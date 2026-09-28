@@ -33,6 +33,8 @@ export const MeSchema = UserSummarySchema.extend({
   provisioning: z.object({
     step: ProvisioningStepSchema,
     error: z.string().optional(),
+    /** Set when `step` is `FAILED`: the checklist row that stopped. */
+    failedStep: z.enum(["ACCOUNT_CREATED", "SUBMITTED", "ACTIVE", "WELCOME_CREDITED", "READY"]).optional(),
   }),
 });
 export type MeDTO = z.infer<typeof MeSchema>;

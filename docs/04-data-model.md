@@ -34,6 +34,7 @@ Milestones are **embedded** in offers because they are always read and written w
     accountStatus?: 'CREATED' | 'SUBMITTED' | 'ACTIVE' | 'ACTION_REQUIRED' | 'SUSPENDED',
     provisioning: {
       step: 'NONE' | 'ACCOUNT_CREATED' | 'SUBMITTED' | 'ACTIVE' | 'WELCOME_CREDITED' | 'READY' | 'FAILED',
+      failedStep?: 'ACCOUNT_CREATED' | 'SUBMITTED' | 'ACTIVE' | 'WELCOME_CREDITED' | 'READY', // which checklist row stopped
       lastError?: string,
       updatedAt: Date,
     },

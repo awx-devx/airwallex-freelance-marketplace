@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ProvisioningChecklist } from "@/components/domain/provisioning-checklist";
+import { inferredFailedStep } from "@/components/domain/provisioning-steps";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/ui/copy-button";
 import { ErrorState } from "@/components/ui/error-state";
@@ -14,11 +15,16 @@ import { ApiError } from "@/lib/api/errors";
 // PROD: A background job provisions the account. This screen only polls.
 export function WelcomeScreen() {
   const router = useRouter();
-  const me = useMe({ refetchInterval: 1500 });
   const run = useRunProvisioning();
+  const me = useMe({ refetchInterval: 1500, keepPolling: run.isPending });
   const started = useRef(false);
   const user = me.data;
   const step = user?.provisioning.step;
+  const requestError = run.isError
+    ? run.error instanceof ApiError
+      ? run.error.message
+      : "Couldn't reach the server. Retry."
+    : undefined;
 
   useEffect(() => {
     if (!user || started.current) return;
@@ -54,12 +60,21 @@ export function WelcomeScreen() {
         <p className="mt-1 text-sm text-muted-foreground">This is a sandbox. The $5,000.00 credit is demo money.</p>
       </div>
       <ProvisioningChecklist
-        provisioning={user.provisioning}
+        provisioning={
+          requestError && step !== "FAILED"
+            ? { ...user.provisioning, step: "FAILED", error: requestError, failedStep: inferredFailedStep(user) }
+            : user.provisioning
+        }
+        running={run.isPending}
         onRetry={() => {
           started.current = true;
+          run.reset();
           run.mutate();
         }}
       />
+      {run.isPending ? (
+        <p className="text-sm text-muted-foreground">This usually takes under a minute. You can leave and come back; setup continues.</p>
+      ) : null}
       {user.airwallex.accountId ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2">
           <p className="truncate font-mono text-xs">{user.airwallex.accountId}</p>
