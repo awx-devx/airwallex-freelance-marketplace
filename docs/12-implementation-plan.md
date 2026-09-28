@@ -115,7 +115,7 @@ Small standalone `tsx` scripts in `scripts/spike/`, sharing the real `src/lib/ai
 
 - `src/lib/config.ts` (server env), `src/lib/db.ts`, Mongoose models from [04](./04-data-model.md).
 - `src/server/http.ts` (`route()` wrapper: session, zod, error mapping), `src/server/dto/*` mappers using `src/contracts/permissions.ts`.
-- Routes: `config/public`, `auth/*`, `me`, `auth/demo-accounts`, `users/search`. Middleware redirect in real mode.
+- Routes: `config/public`, `auth/*`, `me`, `auth/demo-accounts`, `users/search`. Proxy redirect in real mode (`src/proxy.ts`; Next.js 16 renamed middleware).
 
 **Demo (real mode):** sign up and log in against Mongo; empty home page.
 

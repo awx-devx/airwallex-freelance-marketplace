@@ -221,7 +221,7 @@ If a genuinely cross-cutting **client-only** state appears (for example a global
 
 - Pages (`src/app/**/page.tsx`) are thin Server Components that render one **client screen** component (`src/components/screens/OfferScreen.tsx`, etc.). Screens fetch through hooks.
 - We deliberately **don't fetch data in Server Components**. There's one data path (API library → hooks), and it works identically with mocks. That trade-off (no SSR data, loading skeletons on first paint) is fine for a demo.
-- **Auth gating:** `src/middleware.ts` redirects to `/login` when the session cookie is missing, **only in real mode**. In mock mode, `AppShell` uses `useMe()` and redirects client-side. Provisioning gating (`step !== 'READY'` → `/welcome`) is always client-side in `AppShell`.
+- **Auth gating:** `src/proxy.ts` redirects to `/login` when the session cookie is missing, **only in real mode**. Next.js 16 renamed middleware to proxy. In mock mode, `AppShell` uses `useMe()` and redirects client-side. Provisioning gating (`step !== 'READY'` → `/welcome`) is always client-side in `AppShell`.
 - Route groups: `(public)` for login/signup, `(app)` for authenticated pages with `AppShell`, `dev/` for the UI kit.
 
 ## 7. Forms and validation

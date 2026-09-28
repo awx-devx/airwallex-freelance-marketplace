@@ -377,13 +377,13 @@ type CreateOfferInput = {
 
 ```ts
 // src/app/api/offers/[id]/milestones/[mid]/approve/route.ts
-export const POST = route(async ({ user, params }) => {
+export const POST = route({}, async ({ user, params }) => {
   const offer = await escrow.approveMilestone({ actorId: user.id, offerId: params.id, milestoneId: params.mid });
   return toOfferDTO(offer, user.id);           // src/server/dto/offers.ts computes allowedActions
 });
 ```
 
-`route()` (in `src/server/http.ts`) does the session lookup (`401`), zod parsing of body/query (`422`), and maps typed service errors (`NotFound`, `Forbidden`, `InvalidState`, `InsufficientBalance`, `AirwallexError`) to `ErrorDTO` + HTTP status.
+`route()` (in `src/server/http.ts`) requires a session (`401`). `publicRoute()` is the same wrapper for `auth/*` and `config/public`. Pass `{ body, query, successStatus }` for zod parsing (`422`). Both map typed service errors (`NotFound`, `Forbidden`, `InvalidState`, `InsufficientBalance`, `EmailTaken`, `AirwallexError`) to `ErrorDTO` + HTTP status.
 
 `allowedActions` is computed by a **pure function** in `src/contracts/permissions.ts`, `offerActions(offer, viewerRole)` / `milestoneActions(milestone, offer, viewerRole)`. It is shared by the real DTO mapper and the mock handlers so both behave identically.
 

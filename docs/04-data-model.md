@@ -28,6 +28,7 @@ Milestones are **embedded** in offers because they are always read and written w
   avatarColor: string,         // cheap avatar
   kind: 'REGULAR' | 'SEED' | 'REVENUE',   // REVENUE = the service-fee account (no login)
   isGuestPool: boolean,        // DEMO-ONLY: may be handed out by "Continue as guest"
+  demoRole?: 'Seller' | 'Buyer' | 'Both', // SEED only; the login page "Log in as" list. Omitted for regular and revenue users.
   airwallex: {
     accountId?: string,        // acct_...
     accountStatus?: 'CREATED' | 'SUBMITTED' | 'ACTIVE' | 'ACTION_REQUIRED' | 'SUSPENDED',
@@ -65,6 +66,7 @@ Every user CA, including `REVENUE`, is an Airwallex `BUSINESS` account. Provisio
   },
   paymentId?: ObjectId,        // successful funding payment
   isWelcomeOffer: boolean,     // created by provisioning for new users
+  seedKey?: string,            // sparse unique; seed skips an offer that already has this key
   milestones: Milestone[],
   sentAt?: Date, acceptedAt?: Date, fundedAt?: Date, completedAt?: Date, closedAt?: Date,
   createdAt, updatedAt,
@@ -116,7 +118,7 @@ type TransferRef = {
 }
 ```
 
-Indexes: `{ buyerId: 1, status: 1, createdAt: -1 }`, `{ sellerId: 1, status: 1, createdAt: -1 }`, `{ shortRef: 1 }` unique, `{ 'milestones.escrow.sellerSplit.splitId': 1 }` sparse, `{ 'milestones.escrow.revenueSplit.splitId': 1 }` sparse (webhook lookup by split ID).
+Indexes: `{ buyerId: 1, status: 1, createdAt: -1 }`, `{ sellerId: 1, status: 1, createdAt: -1 }`, `{ shortRef: 1 }` unique, `{ seedKey: 1 }` unique sparse, `{ 'milestones.escrow.sellerSplit.splitId': 1 }` sparse, `{ 'milestones.escrow.revenueSplit.splitId': 1 }` sparse (webhook lookup by split ID).
 
 ## `payments`
 

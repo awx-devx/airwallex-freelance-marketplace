@@ -125,13 +125,13 @@ Principles:
 │   │   ├── escrow.ts             # create held splits, release, reverse/refund
 │   │   ├── fees.ts               # fee breakdown math (pure, unit-tested)
 │   │   └── webhookHandlers.ts    # event name -> handler
-│   └── middleware.ts             # real mode: redirect to /login without a session cookie
+│   └── proxy.ts                  # real mode: redirect to /login without a session cookie (Next.js 16; was middleware)
 └── .env.example
 ```
 
 ## Environment variables
 
-`NEXT_PUBLIC_*` values are validated with zod in `src/lib/config.public.ts` (safe to import from client code). Server secrets are validated at boot in `src/lib/config.ts` (added in B1). Missing server values should fail loudly. `NEXT_PUBLIC_API_MOCKS=true` is refused when `NODE_ENV=production` unless `ALLOW_MOCKS_IN_PROD=true`.
+`NEXT_PUBLIC_*` values are validated with zod in `src/lib/config.public.ts` (safe to import from client code). Server secrets are validated at boot in `src/lib/config.ts` (`src/instrumentation.ts` calls it when the Node server starts). Missing server values should fail loudly. `NEXT_PUBLIC_API_MOCKS=true` is refused when `NODE_ENV=production` unless `ALLOW_MOCKS_IN_PROD=true`.
 
 | Variable | Example | Purpose |
 | --- | --- | --- |

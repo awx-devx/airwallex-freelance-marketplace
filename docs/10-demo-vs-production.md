@@ -47,8 +47,8 @@ rg -n "SANDBOX:" src scripts
 
 | Area | Demo behaviour | Production approach |
 | --- | --- | --- |
-| **Auth** | Email + password, **no email verification**, no rate limit, no lockout, no password reset | Verified email (magic link or OTP), rate limiting, lockout, reset flow, optional 2FA; or a managed auth provider |
-| **Guest access** | "Continue as guest" logs into a **shared** seed account | No shared accounts. Per-visitor ephemeral sandboxes if a demo mode is needed |
+| **Auth** | Email + password, **no email verification**, no rate limit, no lockout, no password reset (`src/server/http.ts`, `src/services/auth.ts`) | Verified email (magic link or OTP), rate limiting, lockout, reset flow, optional 2FA; or a managed auth provider |
+| **Guest access** | "Continue as guest" logs into a **shared** seed account (`src/services/auth.ts`) | No shared accounts. Per-visitor ephemeral sandboxes if a demo mode is needed |
 | **Seed login list** | Login page lists seed accounts and their password | Never |
 | **User directory** | Any user can search all users by email | Invite by email/link; privacy controls |
 | **KYC / onboarding** | Fixture **business** identity (`scripts/seed-data/identity-fixture.ts`): a company plus one director, T&Cs agreed on the user's behalf, forced `ACTIVE` via simulation API. The same payload is used for seed users, the fee account, and sign-ups | Hosted Onboarding / Embedded KYC; real business or individual onboarding; real consent; handle `ACTION_REQUIRED` and RFIs; async activation |
@@ -67,14 +67,14 @@ rg -n "SANDBOX:" src scripts
 | **Sync endpoint** | Any participant can force-sync from Airwallex; UI polls it | Keep as an internal reconciliation job, not user-triggered |
 | **`/platform` page** | Visible to any logged-in user (`src/components/screens/platform-screen.tsx`; optional `DEMO_ADMIN_KEY`) | Proper admin RBAC and audit logs |
 | **Token cache** | In-memory per server instance (`src/lib/airwallex/client.ts`) | Shared cache with a single-flight refresh; respect login rate limits |
-| **`client_secret` persistence** | Stored on `payments` to re-render checkout | Don't persist; re-fetch PI or create a new one |
+| **`client_secret` persistence** | Stored on `payments` to re-render checkout (`src/models/payment.ts`) | Don't persist; re-fetch PI or create a new one |
 | **Logs** | Full request/response bodies (redacted) stored in Mongo and **shown to users** in the activity panel | Structured logs in an observability stack; never show raw API payloads to end users |
 | **Concurrency** | Conditional Mongo updates only | Plus transactions where multi-document, plus an outbox pattern for external calls |
 | **Deliverables** | Links only | File uploads with virus scanning and storage |
 | **Mock transport** | UI can run entirely on in-memory mock data (`NEXT_PUBLIC_API_MOCKS=true`), including a localStorage session, plaintext passwords, and a console `window.__api`. `src/lib/api/mock/index.ts`, `src/lib/api/index.ts`. `src/lib/config.public.ts` allows that flag in a production build only when `ALLOW_MOCKS_IN_PROD=true` | Dev/preview only; refused in production builds unless `ALLOW_MOCKS_IN_PROD=true`; the mock module is loaded with a dynamic import |
 | **Mock card form** | `src/components/domain/mock-card-form.tsx` stands in for the Airwallex Drop-in. `4035501000000008` succeeds; `4012000300001003` declines. `src/components/screens/pay-screen.tsx` records that outcome in the mock store before reconcile | `DropInCheckout` renders `@airwallex/components-sdk` against a real PaymentIntent |
 | **`/dev/ui-kit` page** | Component showcase (`src/app/dev/ui-kit/page.tsx`) available when `NODE_ENV` is not production, and optionally in production via `NEXT_PUBLIC_ENABLE_UI_KIT` | Internal tool, not shipped to users |
-| **Client-side auth gating in mock mode** | `AppShell` redirects based on `useMe()`; no middleware check | Server-side session check (middleware) always |
+| **Client-side auth gating in mock mode** | `AppShell` redirects based on `useMe()`; `src/proxy.ts` skips the cookie check while mocks are on | Server-side session check (`src/proxy.ts`) always |
 | **Seed/reset scripts** | Move sandbox money, create accounts, wipe DB | Not present in production builds |
 | **Compliance** | None (no sanctions screening UI, no tax forms, no ToS) | Platform ToS, seller agreements, tax forms (for example the Embedded Tax Form component), transaction monitoring response (RFIs) |
 | **Secrets** | `.env.local` | Secret manager, key rotation, scoped/restricted API keys ([API key best practices](https://www.airwallex.com/docs/developer-tools/api/api-key-best-practices.md)) |
