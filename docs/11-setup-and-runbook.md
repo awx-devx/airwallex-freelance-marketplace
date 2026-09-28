@@ -11,7 +11,7 @@
    - Confirm which **connected account tier** (ledger / withdrawal / full) sandbox CAs will be, and that they can be Funds Split destinations.
    - Ask about any **maximum hold period** for unreleased Funds Splits.
 
-   The spike already confirmed connected accounts, charges, transfers, and Funds Splits to **business** accounts. `connected_account_id` on PaymentIntent create is still rejected, so the backend omits it. Individual accounts cannot be split destinations on this sandbox.
+   The spike already confirmed connected accounts, charges, transfers, and Funds Splits to **business** accounts. This sandbox is gateway **model 2.2**. Individual split destinations need **model 2.1** ([03 §2](./03-airwallex-integration.md#gateway-models-21-and-22)). `connected_account_id` on PaymentIntent create is still rejected, so the backend omits it until payment acceptance is enabled on the seller account.
 3. **API keys:** Developer → API keys. Copy the **Client ID** and **API key** into `.env.local`.
 4. **Webhooks:** Developer → Webhooks → add `https://<public-host>/api/webhooks/airwallex`. Subscribe to the events in [07-webhooks.md](./07-webhooks.md#subscriptions). Copy the **secret** into `AIRWALLEX_WEBHOOK_SECRET`.
 5. Note the **platform account ID** (`acct_...`) into `AIRWALLEX_PLATFORM_ACCOUNT_ID`.
@@ -83,7 +83,7 @@ Without a tunnel, the app falls back to polling via the sync endpoint.
 | `401 unauthorized` on every call | Wrong client ID/API key, or keys from production instead of sandbox. Check `AIRWALLEX_API_BASE`. |
 | `accounts/create` → 403 / `operation_not_supported` | Connected accounts not enabled on the platform account. Contact Airwallex (setup step 2). |
 | `submit` fails with `field_required` | The business payload is missing `business_person_details[0].identifications.primary`. Use `accountCreateBody` in `identity-fixture.ts`. Force-activate only after status is `SUBMITTED`. |
-| Funds Split → `Individual account funds split is only supported for the model 2.1` | The destination was created as `INDIVIDUAL`. Seed and sign-up must create `BUSINESS` accounts. |
+| Funds Split → `Individual account funds split is only supported for the model 2.1` | This sandbox is model 2.2, so the destination must be `BUSINESS`. Individual sellers need the platform moved to model 2.1. See [03 §2](./03-airwallex-integration.md#gateway-models-21-and-22). |
 | `simulation/.../update_status` fails | Account must be in `SUBMITTED` first. |
 | Funds Split create → `operation_not_supported` | Funds Split not enabled, **or** created after settlement. Check timing and account config. Set `ENABLE_WALLET_RAIL=true` and use the wallet rail as the fallback. |
 | Funds Split create → validation error on destination | Destination CA not `ACTIVE` / not KYC-passed, or not eligible tier. |

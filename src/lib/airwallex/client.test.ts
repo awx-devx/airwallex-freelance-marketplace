@@ -47,6 +47,17 @@ describe("payment and split bodies", () => {
     expect(body).not.toHaveProperty("funds_split_data");
   });
 
+  it("omits connected_account_id when the sandbox cannot tag the seller", () => {
+    const body = buildPaymentIntentBody({
+      amountMinor: 10_000,
+      currency: "USD",
+      merchantOrderId: "spike-pay",
+      requestId: "pi:spike-pay:1",
+    });
+    expect(body).not.toHaveProperty("connected_account_id");
+    expect(body.amount).toBe(100);
+  });
+
   it("creates a held funds split amount as a decimal string", () => {
     const body = buildFundsSplitBody({
       amountMinor: 9_000,

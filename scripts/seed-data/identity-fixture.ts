@@ -113,7 +113,8 @@ function director(person: IdentityFixture): JsonObject {
 
 /**
  * Body for POST /api/v1/accounts/create and /update.
- * BUSINESS is required: this sandbox rejects Funds Splits to individual accounts.
+ * BUSINESS is required on this sandbox (gateway model 2.2). Model 2.1 can split to an individual seller.
+ * See docs/03-airwallex-integration.md, "Gateway models 2.1 and 2.2".
  * `level` is retained for the spike's attempt log; every level is this same payload.
  * Submit rejected the account until `business_person_details[0].identifications.primary` was set.
  * Do not set `service_agreement_type: RECIPIENT`. The working account defaulted to FULL.

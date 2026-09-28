@@ -21,7 +21,7 @@ flowchart TB
 
 - **One platform account.** A self-serve sandbox account comes pre-activated, with Payments onboarding approved, Hosted Payment Page enabled, cards enabled, and wallets pre-funded (10,000,000 each in USD, EUR, GBP, and CNY). Settlement is `BACKTOBACK` with a **0-day delay**. Source: [Sandbox settings](https://www.airwallex.com/docs/developer-tools/sandbox-environment/sandbox-settings.md).
 - **Connected accounts must be enabled on the platform account.** The quickstart requires "an Airwallex platform account with connected accounts capabilities enabled", which means contacting Airwallex. Funds Split also requires the Payments-for-Platforms setup. **This is the main external dependency.** See [11-setup-and-runbook.md](./11-setup-and-runbook.md).
-- **One connected account (CA) per user**, type `BUSINESS`. Created via `POST /api/v1/accounts/create`, submitted, then force-activated with the sandbox simulation endpoint. The UI still calls them freelancers. Airwallex has to see a business account because this sandbox rejects Funds Splits to individual accounts (`Individual account funds split is only supported for the model 2.1`).
+- **One connected account (CA) per user**, type `BUSINESS`. Created via `POST /api/v1/accounts/create`, submitted, then force-activated with the sandbox simulation endpoint. The UI still calls them freelancers. This sandbox is gateway **model 2.2**, which only allows a Funds Split to a business account. Model **2.1** can also split to an individual seller. See [§2](#gateway-models-21-and-22).
 - **One Revenue CA**, also `BUSINESS`, seeded once. It receives the platform-fee share of every split (the service fee). It has no login (`kind: REVENUE`). Same create payload as a user, with `business_name: "Platform Revenue"`.
 
 ### Account tier
@@ -29,13 +29,13 @@ flowchart TB
 Connected accounts come in three tiers: **ledger**, **withdrawal**, and **full**. Tier is decided by platform configuration, not per request. See [Account types](https://www.airwallex.com/docs/connected-accounts/about/account-types.md).
 
 - Funds Split destinations "have to pass KYC". In sandbox, we satisfy this with the forced `ACTIVE` status.
-- For this demo, users don't need to accept payments themselves (the **platform** is Merchant of Record), so any tier that can **hold funds** and **pay out to own bank** is enough. Ask Airwallex for whichever tier they enable for sandbox platforms. Document the answer in the setup doc.
+- Any tier that can **hold funds** is enough for the wallet rail. On gateway model 2.2 the card rail also needs the seller account to be a business that can be named on the payment. See below.
 
-## 2. Payment model: "Collect payments directly"
+## 2. Payment model
 
-Airwallex's gateway for platforms has two models ([overview](https://www.airwallex.com/docs/payments-for-platforms/airwallex-gateway/airwallex-payment-gateway-overview.md)):
+Airwallex's published gateway has two models ([overview](https://www.airwallex.com/docs/payments-for-platforms/airwallex-gateway/airwallex-payment-gateway-overview.md)):
 
-| | Collect payments directly (**we use this**) | Collect on behalf of connected accounts |
+| | Collect payments directly | Collect on behalf of connected accounts |
 | --- | --- | --- |
 | Payment owned by | Platform | Connected account |
 | Principal received by | Platform | Connected account |
@@ -43,9 +43,37 @@ Airwallex's gateway for platforms has two models ([overview](https://www.airwall
 | API indicator | Body param `connected_account_id` | Header `x-on-behalf-of` |
 | Typical use | Marketplaces / freelancer platforms | SaaS |
 
-We use **Collect payments directly** because it fits a marketplace: the platform is Merchant of Record, it owns refunds and disputes, and it disburses to sellers via Funds Split.
+Airwallex also uses an internal numbering, **2.1** and **2.2**, which does not line up one-to-one with that table. This sandbox is **2.2**.
 
-On this sandbox, omit `connected_account_id` when creating the PaymentIntent. Naming either an individual or a business account returned `The connected account is not enabled for payment acceptance.` A PaymentIntent with no connected account was paid, then split to a business account. Do not block checkout on that field. Split `destination` is still the seller's business CA and the Revenue CA.
+### Gateway models 2.1 and 2.2
+
+A Funds Split to an individual account returns `Individual account funds split is only supported for the model 2.1`. Business destinations work on 2.2. Switching sellers back to `INDIVIDUAL` means asking Airwallex to move the platform to **2.1**. Staying on 2.2 means those sellers are real businesses that can pass business KYB. The demo force-activates a fixture company. It does not complete KYB.
+
+PaymentIntent `amount` is a decimal **number** (`toAwxAmount`: `100` for $100). Funds Split `amount` is a decimal **string** (`toAwxAmountString`: `"90.00"`). Neither is cents. Held splits set `auto_release: false`. The examples omit fields the client always sends (`request_id`, `merchant_order_id`).
+
+**2.1 — marketplace, platform is Merchant of Record.** Create the PaymentIntent on the platform, then split to the seller after capture. This is the flow that can pay an individual seller, once Airwallex enables individual splits.
+
+```json
+{ "amount": 100, "currency": "USD", "platform_mor": true }
+```
+
+```json
+{ "source_id": "int_...", "source_type": "PAYMENT_INTENT", "destination": "acct_seller", "amount": "90.00", "auto_release": false }
+```
+
+`platform_mor` is the field Airwallex named for this model. The spike has not sent it. Confirm it against the API before using it. The spike's working payment was this shape without `platform_mor`: no `connected_account_id`, then a held split to a business account.
+
+**2.2 — seller is Merchant of Record.** This is the current sandbox. Airwallex's intended create names the seller on the PaymentIntent, then splits from the platform to that same account after capture. The destination has to be a **business** account.
+
+```json
+{ "amount": 100, "currency": "USD", "connected_account_id": "acct_seller" }
+```
+
+```json
+{ "source_id": "int_...", "source_type": "PAYMENT_INTENT", "destination": "acct_seller", "amount": "90.00", "auto_release": false }
+```
+
+That create is not usable here yet. `connected_account_id` was rejected for both the individual seller and the business account: `The connected account is not enabled for payment acceptance.` Until that is enabled, create the PaymentIntent with no `connected_account_id`. The held split still uses `destination` = the seller business CA, and a second split uses the Revenue business CA for the fee. Do not send `x-on-behalf-of` on these calls. That header is the other published model, and it failed the same way in the spike.
 
 ## 3. The two funding rails
 

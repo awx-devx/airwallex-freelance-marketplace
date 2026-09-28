@@ -7,7 +7,8 @@ export type CreatePaymentIntentInput = {
   currency: string;
   merchantOrderId: string;
   requestId: string;
-  connectedAccountId: string;
+  /** Omit on this sandbox (model 2.2). The API rejects it until the account is enabled for payment acceptance. */
+  connectedAccountId?: string;
   metadata?: Record<string, string>;
   returnUrl?: string;
   relatedOfferId?: string;
@@ -21,7 +22,7 @@ export function buildPaymentIntentBody(input: CreatePaymentIntentInput): JsonObj
     currency: input.currency,
     merchant_order_id: input.merchantOrderId,
     request_id: input.requestId,
-    connected_account_id: input.connectedAccountId,
+    ...(input.connectedAccountId ? { connected_account_id: input.connectedAccountId } : {}),
     ...(input.metadata ? { metadata: input.metadata } : {}),
     ...(input.returnUrl ? { return_url: input.returnUrl } : {}),
   };
