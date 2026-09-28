@@ -154,7 +154,7 @@ export function PayScreen({ id }: { id: string }) {
               }}
             />
           ) : (
-            <DropInCheckout session={start.data} />
+            <DropInCheckout session={start.data} offerId={id} />
           )}
           {config.data ? <TestCardHint cards={config.data.testCards} /> : null}
         </TabsContent>

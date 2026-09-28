@@ -3,6 +3,7 @@ import { ActivityItemSchema } from "@/contracts/activity";
 import type { EscrowLegDTO, OfferDTO, OfferSummaryDTO } from "@/contracts/offers";
 import { OfferSchema, OfferSummarySchema } from "@/contracts/offers";
 import { milestoneActions, milestoneIsPending, offerActions, offerIsPending } from "@/contracts/permissions";
+import type { PaymentDocument } from "@/models/payment";
 import type { OfferDocument } from "@/models/offer";
 import type { UserDocument } from "@/models/user";
 import { toUserSummary } from "@/server/dto/users";
@@ -100,7 +101,13 @@ function nextAction(offer: OfferDocument, viewerRole: "BUYER" | "SELLER"): Offer
   return undefined;
 }
 
-export function toOffer(offer: OfferDocument, viewerId: string, seller: UserDocument, buyer: UserDocument): OfferDTO {
+export function toOffer(
+  offer: OfferDocument,
+  viewerId: string,
+  seller: UserDocument,
+  buyer: UserDocument,
+  payment?: Pick<PaymentDocument, "rail" | "status" | "paymentIntentId" | "chargeId"> | null,
+): OfferDTO {
   const viewerRole = role(offer, viewerId);
   const currency = offer.currency;
   const counts: OfferDTO["milestoneCounts"] = {};
@@ -185,6 +192,14 @@ export function toOffer(offer: OfferDocument, viewerId: string, seller: UserDocu
     })),
     allowedActions: offerActions(offer, viewerRole),
     isPending: offerIsPending(offer),
+    payment: payment
+      ? {
+          rail: payment.rail,
+          status: payment.status,
+          ...(payment.paymentIntentId ? { paymentIntentId: payment.paymentIntentId } : {}),
+          ...(payment.chargeId ? { chargeId: payment.chargeId } : {}),
+        }
+      : undefined,
     acceptedAt: iso(offer.acceptedAt),
     fundedAt: iso(offer.fundedAt),
     completedAt: iso(offer.completedAt),

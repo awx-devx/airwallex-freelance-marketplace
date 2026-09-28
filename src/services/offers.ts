@@ -7,6 +7,7 @@ import { connectDb } from "@/lib/db";
 import { fromAwxAmount } from "@/lib/money";
 import { Activity } from "@/models/activity";
 import { Offer, type OfferDocument } from "@/models/offer";
+import { Payment } from "@/models/payment";
 import { User, type UserDocument } from "@/models/user";
 import { WELCOME_TEMPLATES } from "../../scripts/seed-data/welcome-templates";
 import { toActivity, toOffer, toSummary } from "@/server/dto/offers";
@@ -34,7 +35,8 @@ async function parties(offer: OfferDocument): Promise<{ seller: UserDocument; bu
 
 async function present(offer: OfferDocument, viewerId: string) {
   const { seller, buyer } = await parties(offer);
-  return toOffer(offer, viewerId, seller, buyer);
+  const payment = offer.paymentId ? await Payment.findById(offer.paymentId) : null;
+  return toOffer(offer, viewerId, seller, buyer, payment);
 }
 
 async function record(

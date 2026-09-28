@@ -63,7 +63,7 @@ rg -n "SANDBOX:" src scripts
 | **Currency** | Single currency (`USD`) | Multi-currency pricing, FX (Conversions API), currency-precision handling |
 | **Amount limits** | Min $10 per milestone; sandbox transaction limit is ~10,000 | Business rules plus Airwallex account limits |
 | **Webhook processing** | Processed inline in the request; always returns 200 | Ack fast, enqueue, process async with retries; alert on failures |
-| **Webhook test signatures** | Accepts `client-secret-key` header for web-app test events (non-prod only), including `scripts/spike/08-webhooks.ts` | Never |
+| **Webhook test signatures** | Accepts `client-secret-key` header for web-app test events (non-prod only), including `src/app/api/webhooks/airwallex/route.ts` and `scripts/spike/08-webhooks.ts` | Never |
 | **Sync endpoint** | Any participant can force-sync from Airwallex; UI polls it | Keep as an internal reconciliation job, not user-triggered |
 | **`/platform` page** | Visible to any logged-in user (`src/components/screens/platform-screen.tsx`; optional `DEMO_ADMIN_KEY`) | Proper admin RBAC and audit logs |
 | **Token cache** | In-memory per server instance (`src/lib/airwallex/client.ts`) | Shared cache with a single-flight refresh; respect login rate limits |
