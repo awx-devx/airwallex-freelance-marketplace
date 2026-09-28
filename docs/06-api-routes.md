@@ -361,8 +361,8 @@ type CreateOfferInput = {
 | --- | --- | --- | --- |
 | GET | `/api/wallet` | – | `WalletDTO` |
 | GET | `/api/wallet/transactions` | `?cursor=` | `Page<TransactionDTO>` |
-| POST | `/api/wallet/withdrawals` (stretch) | `{ amount: string }` | `{ ok: true, transferId: string }` |
-| POST | `/api/wallet/sends` (stretch) | `{ recipientId: string, amount: string }` | `{ ok: true }` |
+| POST | `/api/wallet/withdrawals` | `{ amount: string }` | `{ ok: true, transferId: string }` |
+| POST | `/api/wallet/sends` | `{ recipientId: string, amount: string }` | `{ ok: true }` |
 
 ### Platform (demo-only)
 

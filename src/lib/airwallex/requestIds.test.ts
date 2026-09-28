@@ -11,7 +11,11 @@ import {
   sellerSplitRequestId,
   sellerTransferRequestId,
   seedTopUpRequestId,
+  sendChargeRequestId,
+  sendReturnRequestId,
+  sendTransferRequestId,
   welcomeCreditRequestId,
+  withdrawalRequestId,
 } from "@/lib/airwallex/requestIds";
 
 const offerId = "a".repeat(24);
@@ -32,6 +36,13 @@ describe("request ids", () => {
     expect(refundTransferRequestId(milestoneId)).toBe(`cat:${milestoneId}:refund`);
     expect(welcomeCreditRequestId(offerId)).toBe(`welcome:${offerId}`);
     expect(seedTopUpRequestId(offerId, 1)).toBe(`seedtopup:${offerId}:1`);
+    const nonce = "c".repeat(32);
+    expect(sendChargeRequestId(nonce)).toBe(`sch:${nonce}`);
+    expect(sendTransferRequestId(nonce)).toBe(`sxf:${nonce}`);
+    expect(sendReturnRequestId(nonce)).toBe(`srt:${nonce}`);
+    expect(withdrawalRequestId(nonce)).toBe(`wd:${nonce}`);
+    expect(sendChargeRequestId(nonce).length).toBeLessThanOrEqual(50);
+    expect(withdrawalRequestId(nonce).length).toBeLessThanOrEqual(64);
 
     for (const id of [
       paymentIntentRequestId(offerId, 1),

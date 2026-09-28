@@ -55,13 +55,16 @@ export const TransactionsQuerySchema = z.object({
 export const WithdrawalInputSchema = z.object({
   amount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Enter a dollar amount with up to 2 decimal places."),
 });
+export type WithdrawalInput = z.infer<typeof WithdrawalInputSchema>;
 
 export const SendFundsInputSchema = z.object({
   recipientId: z.string().min(1),
   amount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Enter a dollar amount with up to 2 decimal places."),
 });
+export type SendFundsInput = z.infer<typeof SendFundsInputSchema>;
 
 export const WithdrawalResultSchema = z.object({
   ok: z.literal(true),
   transferId: z.string().min(1),
 });
+export type WithdrawalResult = z.infer<typeof WithdrawalResultSchema>;

@@ -177,7 +177,8 @@ Milestone → `CHANGES_REQUESTED`, review comment saved. The seller sees the com
 - **Escrow summary** from our DB: "Held for you (incoming as seller): $X" and "Held from you (as buyer): $Y".
 - **Transactions** from `GET /balances/history` (on behalf of the user), shown with type, amount, and date. Map types like `TRANSFER`, `CHARGE`, `SPLIT`, `PAYOUT` to friendly labels.
 - **Airwallex account card:** `acct_...` ID, status, and a "View raw" toggle (demo transparency).
-- Stretch: **Withdraw to bank** (sandbox beneficiary + transfer) and **Send to user** (charge + CA transfer).
+- **Withdraw to bank:** `POST /api/wallet/withdrawals` creates a local USD transfer (`POST /api/v1/transfers/create`, `x-on-behalf-of` the user's CA) to a shared sandbox ACH beneficiary. The amount is checked against the available balance first.
+- **Send to user:** `POST /api/wallet/sends` charges the sender's CA, waits until that charge is `SETTLED`, then creates a CA transfer to the recipient. If the transfer fails, the same amount is transferred back to the sender. The recipient must be a ready user and cannot be the revenue account or the sender.
 
 ---
 

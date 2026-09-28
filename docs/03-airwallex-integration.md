@@ -236,8 +236,8 @@ The create body is `accountCreateBody` in `scripts/seed-data/identity-fixture.ts
 | Balances | `GET /api/v1/balances/current` with `x-on-behalf-of: {userCA}` | Core |
 | Transaction history | `GET /api/v1/balances/history` with `x-on-behalf-of` | Core |
 | Escrow summary | Our DB: sum of `FUNDED`/`SUBMITTED` milestones as buyer ("held") and as seller ("incoming") | Core |
-| Withdraw to bank | Create beneficiary + `POST /api/v1/transfers/create` with `x-on-behalf-of` | Stretch. Uses sandbox test bank details. See [Create a transfer](https://www.airwallex.com/docs/payments-for-platforms/pay-out-funds/create-a-transfer.md). |
-| Send to another user | Charge (sender CA → platform) then CA Transfer (platform → recipient CA) | Stretch. Demonstrates CA-to-CA movement through the platform. |
+| Withdraw to bank | `POST /api/v1/transfers/create` with an inline beneficiary and `x-on-behalf-of` | Shared sandbox ACH account. See [Create a transfer](https://www.airwallex.com/docs/payments-for-platforms/pay-out-funds/create-a-transfer.md). |
+| Send to another user | Charge (sender CA → platform) then CA Transfer (platform → recipient CA) | Waits for the charge to settle. If the transfer fails, the amount is transferred back to the sender. |
 | Top up (simulated deposit) | Global Account on behalf of CA + `POST /api/v1/simulation/deposit/create` | Stretch. Requires Global Accounts capability. |
 
 ## 9. Endpoint reference (everything we call)
@@ -259,11 +259,11 @@ All paths are relative to `https://api.sandbox.airwallex.com`. All calls use `Au
 | List Funds Splits | `GET /api/v1/pa/funds_splits` | – | sync, platform page |
 | Create Funds Split Reversal | `POST /api/v1/pa/funds_split_reversals/create` | – | cancel |
 | Create Refund | `POST /api/v1/pa/refunds/create` | – | cancel |
-| Create Charge | `POST /api/v1/charges/create` | – (`source` = CA) | wallet funding |
-| Create CA Transfer | `POST /api/v1/connected_account_transfers/create` | – (`destination` = CA) | welcome credit, wallet release/refund |
+| Create Charge | `POST /api/v1/charges/create` | – (`source` = CA) | wallet funding, send |
+| Create CA Transfer | `POST /api/v1/connected_account_transfers/create` | – (`destination` = CA) | welcome credit, wallet release/refund, send |
 | Current balances | `GET /api/v1/balances/current` | ✓ | wallet page, platform page |
 | Balance history | `GET /api/v1/balances/history` | ✓ | wallet page |
-| Create beneficiary / transfer | `POST /api/v1/beneficiaries/create`, `POST /api/v1/transfers/create` | ✓ | withdraw (stretch) |
+| Create transfer | `POST /api/v1/transfers/create` | ✓ | withdraw |
 
 Funds Split statuses: `CREATED` → `RELEASED` → `SETTLED` (plus `funds_split.failed`).
 Refund statuses: `RECEIVED` → `ACCEPTED` → `SETTLED` or `FAILED`.

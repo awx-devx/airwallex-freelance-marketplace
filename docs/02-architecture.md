@@ -187,8 +187,13 @@ Airwallex requires a unique `request_id` (max 64 chars) on create calls. Derivin
 | Charge (wallet rail funding) | `ch:{offerId}` |
 | CA transfer to seller (wallet rail release) | `cat:{milestoneId}:seller` |
 | Welcome credit | `welcome:{userId}` |
+| Seed wallet top-up | `seedtopup:{userId}:{seedVersion}` |
+| CA transfer to revenue (wallet rail release) | `cat:{milestoneId}:rev` |
+| CA transfer refund to buyer (wallet rail) | `cat:{milestoneId}:refund` |
+| Send to another user (charge, then transfer, then return) | `sch:{nonce}`, `sxf:{nonce}`, `srt:{nonce}` |
+| Withdraw to bank | `wd:{nonce}` |
 
-Mongo ObjectIds are 24 chars, so these stay under 64.
+Offer and user ids are 24-character Mongo ObjectIds. Send and withdrawal ids append a 32-character nonce because each movement is a new transfer, so a double-click can create two payouts. Scale charges and connected-account transfers reject ids longer than 50 characters; payout transfer ids allow 64.
 
 ## Money representation
 

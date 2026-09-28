@@ -60,3 +60,19 @@ export function welcomeCreditRequestId(userId: string): string {
 export function seedTopUpRequestId(userId: string, seedVersion: number): string {
   return assertRequestId(`seedtopup:${userId}:${seedVersion}`, SCALE_MAX);
 }
+
+export function sendChargeRequestId(nonce: string): string {
+  return assertRequestId(`sch:${nonce}`, SCALE_MAX);
+}
+
+export function sendTransferRequestId(nonce: string): string {
+  return assertRequestId(`sxf:${nonce}`, SCALE_MAX);
+}
+
+export function sendReturnRequestId(nonce: string): string {
+  return assertRequestId(`srt:${nonce}`, SCALE_MAX);
+}
+
+export function withdrawalRequestId(nonce: string): string {
+  return assertRequestId(`wd:${nonce}`);
+}

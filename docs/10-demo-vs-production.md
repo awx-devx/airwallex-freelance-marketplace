@@ -54,6 +54,7 @@ rg -n "SANDBOX:" src scripts
 | **KYC / onboarding** | Fixture **business** identity (`scripts/seed-data/identity-fixture.ts`, `src/services/provisioning.ts`): a company plus one director, T&Cs agreed on the user's behalf, forced `ACTIVE` via simulation API. The same payload is used for seed users, the fee account, and sign-ups | Hosted Onboarding / Embedded KYC; real business or individual onboarding; real consent; handle `ACTION_REQUIRED` and RFIs; async activation |
 | **Provisioning** | Inline during sign-up, polled by the browser (`src/services/provisioning.ts`, `src/components/screens/welcome-screen.tsx`) | Background job with retries and alerting |
 | **Welcome credit** | Platform gives every user $5,000 from its sandbox wallet via CA Transfer (`src/services/provisioning.ts`) | Not a thing. Balances come from real payments / deposits |
+| **Withdrawals** | Every withdrawal pays one shared sandbox ACH beneficiary (`src/lib/airwallex/payouts.ts`) | Collect and store the user's own beneficiary |
 | **Welcome offer** | Auto-generated offer from a seed seller (`src/services/offers.ts`) | Not a thing |
 | **Seller cancel** | Seller can cancel a funded milestone and trigger a buyer refund unilaterally; buyer can cancel a submitted milestone unilaterally | Cancellation policy, mutual consent, and dispute/arbitration flow |
 | **No auto-approval** | Money is held until the buyer acts (forever) | Auto-approve after N days of buyer inactivity (with notifications); hold-period limits per Airwallex config |
