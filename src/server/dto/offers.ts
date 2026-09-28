@@ -3,6 +3,7 @@ import { ActivityItemSchema } from "@/contracts/activity";
 import type { EscrowLegDTO, OfferDTO, OfferSummaryDTO } from "@/contracts/offers";
 import { OfferSchema, OfferSummarySchema } from "@/contracts/offers";
 import { milestoneActions, milestoneIsPending, offerActions, offerIsPending } from "@/contracts/permissions";
+import { milestoneActionOptions } from "@/server/milestoneOptions";
 import type { PaymentDocument } from "@/models/payment";
 import type { OfferDocument } from "@/models/offer";
 import type { UserDocument } from "@/models/user";
@@ -185,7 +186,7 @@ export function toOffer(
           : undefined,
       })),
       escrowLegs: escrowLegs(milestone, currency),
-      allowedActions: milestoneActions(milestone, offer, viewerRole),
+      allowedActions: milestoneActions(milestone, offer, viewerRole, milestoneActionOptions()),
       approvedAt: iso(milestone.approvedAt),
       paidAt: iso(milestone.paidAt),
       refundedAt: iso(milestone.refundedAt),

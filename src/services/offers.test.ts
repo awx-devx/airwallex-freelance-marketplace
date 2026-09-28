@@ -167,4 +167,39 @@ describe("offers", () => {
     expect(activity.map((item) => item.type)).toEqual(["OFFER_SENT", "DELIVERY_SUBMITTED", "CHANGES_REQUESTED", "DELIVERY_SUBMITTED"]);
     expect(activity[2]?.milestoneId).toBe(milestoneId);
   });
+
+  it("holds the next delivery until the previous milestone is paid when sequential", async () => {
+    process.env.SEQUENTIAL_MILESTONES = "true";
+    resetServerConfigCache();
+    try {
+      const seller = await readyUser("maya@example.com", "Maya Chen");
+      const buyer = await readyUser("sam@example.com", "Sam Rivera");
+      const sent = await createAndSend(seller, {
+        ...input,
+        buyerId: buyer._id.toString(),
+        milestones: [
+          { title: "Design", description: "Homepage", amount: "100.00", dueDate: "2026-10-12" },
+          { title: "Build", description: "Pages", amount: "50.00", dueDate: "2026-10-20" },
+        ],
+      });
+      await Offer.updateOne(
+        { _id: sent.id },
+        { $set: { status: "ACTIVE", "milestones.0.status": "FUNDED", "milestones.1.status": "FUNDED" } },
+      );
+      const funded = await getOffer(seller, sent.id);
+      expect(funded.milestones[0]?.allowedActions).toContain("SUBMIT_DELIVERY");
+      expect(funded.milestones[1]?.allowedActions).not.toContain("SUBMIT_DELIVERY");
+      const secondId = sent.milestones[1]?.id ?? "";
+      await expect(submitDelivery(seller, sent.id, secondId, { links: ["https://example.com/build"] })).rejects.toBeInstanceOf(
+        InvalidState,
+      );
+
+      await Offer.updateOne({ _id: sent.id }, { $set: { "milestones.0.status": "PAID" } });
+      const delivered = await submitDelivery(seller, sent.id, secondId, { links: ["https://example.com/build"] });
+      expect(delivered.milestones[1]?.status).toBe("SUBMITTED");
+    } finally {
+      delete process.env.SEQUENTIAL_MILESTONES;
+      resetServerConfigCache();
+    }
+  });
 });

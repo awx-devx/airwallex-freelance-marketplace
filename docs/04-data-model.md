@@ -253,6 +253,6 @@ Rules:
 
 - **Only the buyer** can approve or request changes. **Only the seller** can submit deliveries.
 - Either party can cancel an **unreleased** milestone (`FUNDED`/`SUBMITTED`/`CHANGES_REQUESTED`). `// DEMO-ONLY:` In production, a seller-side cancel would need buyer consent or dispute rules.
-- Milestones can be delivered in **any order** (simpler). An optional `SEQUENTIAL_MILESTONES=true` flag can require the previous milestone to be `PAID` first.
+- Milestones can be delivered in **any order** (simpler). `SEQUENTIAL_MILESTONES=true` requires the previous milestone to be `PAID` first. The server reads that flag when it builds `allowedActions` and when it accepts a delivery. Default is false.
 - A milestone is `PAID` only when **both** its seller and revenue splits (or transfers) are settled. The seller split settling is what the UI calls "Seller paid".
 - All transitions go through `src/services/escrow.ts` / `offers.ts` using **conditional updates** (`findOneAndUpdate({ _id, 'milestones._id': mId, 'milestones.status': expected }, ...)`). This prevents double-approval from double clicks or concurrent webhook plus return-page processing.

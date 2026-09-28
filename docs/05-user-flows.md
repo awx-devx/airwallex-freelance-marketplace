@@ -125,7 +125,7 @@ Offer → `DECLINED`, activity. No Airwallex calls.
 
 **UI:** `/offers/[id]` (seller view). Each `FUNDED` or `CHANGES_REQUESTED` milestone has a **Submit delivery** form: 1–5 URLs (validated as `http(s)`) and an optional note.
 
-**Server (`offers.submitDelivery`):** guard seller + status; push `deliveries[]` entry; milestone → `SUBMITTED`; activity `DELIVERY_SUBMITTED`.
+**Server (`offers.submitDelivery`):** guard seller + status; push `deliveries[]` entry; milestone → `SUBMITTED`; activity `DELIVERY_SUBMITTED`. With `SEQUENTIAL_MILESTONES=true` (default false), delivery is refused until the previous milestone is `PAID`. The same check hides **Submit delivery** on the offer.
 
 No Airwallex calls happen.
 

@@ -152,6 +152,7 @@ Principles:
 | `PROCESSING_RESERVE_PERCENT` | `2` | Part of the fee left unsplit on the platform account to absorb Airwallex processing fees. Must be `<= PLATFORM_FEE_PERCENT`. |
 | `WELCOME_CREDIT_AMOUNT` | `5000` | Wallet credit (CA Transfer from platform) given to every new account. |
 | `ENABLE_WALLET_RAIL` | `true` | Show "Pay from wallet" at checkout. |
+| `SEQUENTIAL_MILESTONES` | `false` | When `true`, a seller can deliver a milestone only after the previous one is `PAID`. |
 | `SEED_PASSWORD` | `demo1234` | Password for all seeded users. |
 | `DEMO_ADMIN_KEY` | random | Optional gate for `/platform` and destructive admin routes. |
 

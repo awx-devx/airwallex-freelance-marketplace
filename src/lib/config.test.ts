@@ -21,6 +21,7 @@ describe("parseServerConfig", () => {
       processingReservePercent: 2,
       welcomeCreditAmount: 5000,
       walletRailEnabled: true,
+      sequentialMilestones: false,
       seedPassword: "demo1234",
     });
   });

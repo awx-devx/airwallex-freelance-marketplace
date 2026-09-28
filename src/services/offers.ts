@@ -11,6 +11,7 @@ import { Payment } from "@/models/payment";
 import { User, type UserDocument } from "@/models/user";
 import { WELCOME_TEMPLATES } from "../../scripts/seed-data/welcome-templates";
 import { toActivity, toOffer, toSummary } from "@/server/dto/offers";
+import { milestoneActionOptions } from "@/server/milestoneOptions";
 import { Forbidden, HttpError, InvalidState, NotFound, ProvisioningIncomplete } from "@/server/errors";
 import { breakdown } from "@/services/fees";
 
@@ -265,7 +266,7 @@ export async function submitDelivery(viewer: UserDocument, offerId: string, mile
   const offer = await loadForParty(offerId, viewerId);
   const milestone = milestoneOf(offer, milestoneId);
   const viewerRole = offer.buyerId.toString() === viewerId ? "BUYER" : "SELLER";
-  if (!milestoneActions(milestone, offer, viewerRole).includes("SUBMIT_DELIVERY")) {
+  if (!milestoneActions(milestone, offer, viewerRole, milestoneActionOptions()).includes("SUBMIT_DELIVERY")) {
     throw new InvalidState("That action isn't available.");
   }
   const updated = await Offer.findOneAndUpdate(

@@ -15,6 +15,7 @@ const ServerEnvSchema = z
     PROCESSING_RESERVE_PERCENT: z.number().nonnegative().default(2),
     WELCOME_CREDIT_AMOUNT: z.number().positive().default(5000),
     ENABLE_WALLET_RAIL: z.enum(["true", "false"]).default("true"),
+    SEQUENTIAL_MILESTONES: z.enum(["true", "false"]).default("false"),
     SEED_PASSWORD: z.string().min(1).default("demo1234"),
     DEMO_ADMIN_KEY: z.string().min(1).optional(),
   })
@@ -38,6 +39,7 @@ export type ServerConfig = {
   /** Major units, as in `WELCOME_CREDIT_AMOUNT`. Convert at the Airwallex boundary. */
   welcomeCreditAmount: number;
   walletRailEnabled: boolean;
+  sequentialMilestones: boolean;
   seedPassword: string;
   demoAdminKey?: string;
 };
@@ -60,6 +62,7 @@ export function parseServerConfig(env: Record<string, string | undefined>): Serv
   const feeRaw = emptyToUndefined(env.PLATFORM_FEE_PERCENT);
   const welcomeRaw = emptyToUndefined(env.WELCOME_CREDIT_AMOUNT);
   const walletRaw = emptyToUndefined(env.ENABLE_WALLET_RAIL);
+  const sequentialRaw = emptyToUndefined(env.SEQUENTIAL_MILESTONES);
 
   const parsed = ServerEnvSchema.safeParse({
     APP_URL: emptyToUndefined(env.APP_URL) ?? "http://localhost:3000",
@@ -70,6 +73,7 @@ export function parseServerConfig(env: Record<string, string | undefined>): Serv
     PROCESSING_RESERVE_PERCENT: numberOrDefault(reserveRaw, 2),
     WELCOME_CREDIT_AMOUNT: numberOrDefault(welcomeRaw, 5000),
     ENABLE_WALLET_RAIL: walletRaw ?? "true",
+    SEQUENTIAL_MILESTONES: sequentialRaw ?? "false",
     SEED_PASSWORD: emptyToUndefined(env.SEED_PASSWORD) ?? "demo1234",
     DEMO_ADMIN_KEY: emptyToUndefined(env.DEMO_ADMIN_KEY),
   });
@@ -94,6 +98,7 @@ export function parseServerConfig(env: Record<string, string | undefined>): Serv
     processingReservePercent: parsed.data.PROCESSING_RESERVE_PERCENT,
     welcomeCreditAmount: parsed.data.WELCOME_CREDIT_AMOUNT,
     walletRailEnabled: parsed.data.ENABLE_WALLET_RAIL === "true",
+    sequentialMilestones: parsed.data.SEQUENTIAL_MILESTONES === "true",
     seedPassword: parsed.data.SEED_PASSWORD,
     demoAdminKey: parsed.data.DEMO_ADMIN_KEY,
   };

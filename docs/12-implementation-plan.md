@@ -168,8 +168,8 @@ Small standalone `tsx` scripts in `scripts/spike/`, sharing the real `src/lib/ai
 ### B8 — Mocks off + deploy
 
 - Run the full demo script with `NEXT_PUBLIC_API_MOCKS=false`.
-- Stretch: withdraw to bank; send to user; `SEQUENTIAL_MILESTONES` flag.
-- Deploy to Vercel + Atlas; register the webhook; run seed; rehearse.
+- Stretch, implemented: withdraw to bank, send to user, `SEQUENTIAL_MILESTONES` (default false).
+- Deploy to Vercel + Atlas; register the webhook; rehearse. Seed has been run locally against Atlas.
 - Audit: `rg "DEMO-ONLY:"` matches the inventory in [10](./10-demo-vs-production.md).
 
 ---
