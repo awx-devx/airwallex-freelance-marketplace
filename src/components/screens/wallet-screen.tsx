@@ -31,6 +31,7 @@ function AmountDialog({
   confirmLabel,
   pending,
   error,
+  confirmDisabled,
   onOpenChange,
   onConfirm,
   extra,
@@ -41,6 +42,7 @@ function AmountDialog({
   confirmLabel: string;
   pending: boolean;
   error?: string;
+  confirmDisabled?: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (amount: string) => void;
   extra?: ReactNode;
@@ -67,7 +69,13 @@ function AmountDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button type="button" variant="primary" loading={pending} disabled={amount.length === 0} onClick={() => onConfirm(amount)}>
+          <Button
+            type="button"
+            variant="primary"
+            loading={pending}
+            disabled={amount.length === 0 || confirmDisabled}
+            onClick={() => onConfirm(amount)}
+          >
             {confirmLabel}
           </Button>
         </DialogFooter>
@@ -172,7 +180,13 @@ export function WalletScreen() {
         confirmLabel="Send"
         pending={send.isPending}
         error={send.error instanceof ApiError ? send.error.message : undefined}
-        extra={<UserPicker value={recipient} onChange={setRecipient} />}
+        confirmDisabled={!recipient}
+        extra={
+          <div className="flex flex-col gap-2">
+            <UserPicker value={recipient} onChange={setRecipient} />
+            {recipient ? null : <p className="text-sm text-muted-foreground">Choose who to send to.</p>}
+          </div>
+        }
         onOpenChange={setSendOpen}
         onConfirm={(amount) => {
           if (!recipient) return;

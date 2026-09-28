@@ -274,7 +274,7 @@ Each page is a thin `page.tsx` that renders a client **screen** component. Stand
 
 ### `/wallet` — `WalletScreen`
 - **Data:** `useWallet()`, `useWalletTransactions()` (infinite)
-- **UI:** `AccountCard`, `BalanceTable`, escrow summary (held as buyer / incoming as seller), `TransactionList` with **Load more**. Stretch: Withdraw / Send dialogs.
+- **UI:** `AccountCard`, `BalanceTable`, escrow summary (held as buyer / incoming as seller), `TransactionList` with **Load more**. Withdraw and Send dialogs. Send stays disabled, with "Choose who to send to.", until a recipient is picked.
 
 ### `/platform` — `PlatformScreen` (demo-only)
 - **Data:** `usePlatformOverview()`, `usePlatformWebhooks()` (both poll every 5s)
