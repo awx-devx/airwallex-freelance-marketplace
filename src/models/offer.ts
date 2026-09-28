@@ -75,6 +75,7 @@ const MilestoneSchema = new Schema(
     approvedAt: Date,
     paidAt: Date,
     refundedAt: Date,
+    lastError: String,
   },
   { timestamps: false },
 );
@@ -156,6 +157,7 @@ export type OfferDocument = {
     approvedAt?: Date;
     paidAt?: Date;
     refundedAt?: Date;
+    lastError?: string;
   }>;
   sentAt?: Date;
   acceptedAt?: Date;

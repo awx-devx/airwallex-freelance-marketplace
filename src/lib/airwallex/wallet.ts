@@ -58,12 +58,15 @@ export async function balanceHistory(input: {
   onBehalfOf?: string;
   currency?: string;
   pageSize?: number;
+  /** `0` asks for history beyond the default 7-day window. Later pages pass `page_after`. */
+  page?: string | number;
 }): Promise<unknown> {
   return request<unknown>("GET", "/api/v1/balances/history", {
     onBehalfOf: input.onBehalfOf,
     query: {
       currency: input.currency,
       page_size: input.pageSize ?? 10,
+      page: input.page ?? 0,
     },
   });
 }

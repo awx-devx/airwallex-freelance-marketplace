@@ -189,6 +189,7 @@ export function toOffer(
       approvedAt: iso(milestone.approvedAt),
       paidAt: iso(milestone.paidAt),
       refundedAt: iso(milestone.refundedAt),
+      lastError: milestone.lastError || undefined,
     })),
     allowedActions: offerActions(offer, viewerRole),
     isPending: offerIsPending(offer),

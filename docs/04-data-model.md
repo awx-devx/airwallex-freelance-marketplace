@@ -99,6 +99,7 @@ type Milestone = {
     refundTransfer?: TransferRef,
   },
   approvedAt?: Date, paidAt?: Date, refundedAt?: Date,
+  lastError?: string,          // set while a release or refund is stuck or failed
 }
 
 type SplitRef = {

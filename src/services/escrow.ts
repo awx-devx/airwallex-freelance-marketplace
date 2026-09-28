@@ -1,12 +1,16 @@
+import { Types } from "mongoose";
+import { milestoneActions } from "@/contracts/permissions";
 import { readString, type JsonObject } from "@/lib/airwallex/json";
-import { createFundsSplit, retrieveFundsSplit, type CreateFundsSplitInput } from "@/lib/airwallex/fundsSplits";
-import { sellerSplitRequestId, revenueSplitRequestId } from "@/lib/airwallex/requestIds";
+import { createFundsSplit, releaseFundsSplit, retrieveFundsSplit, type CreateFundsSplitInput } from "@/lib/airwallex/fundsSplits";
+import { releaseSplitRequestId, revenueSplitRequestId, sellerSplitRequestId } from "@/lib/airwallex/requestIds";
 import { connectDb } from "@/lib/db";
 import { Activity } from "@/models/activity";
-import { Offer } from "@/models/offer";
+import { Offer, type OfferDocument } from "@/models/offer";
 import { Payment } from "@/models/payment";
 import { PlatformSettings } from "@/models/platformSettings";
-import { User } from "@/models/user";
+import { User, type UserDocument } from "@/models/user";
+import { Forbidden, InvalidState, NotFound } from "@/server/errors";
+import { getOffer } from "@/services/offers";
 
 const SPLIT_RANK: Record<string, number> = { CREATED: 1, RELEASED: 2, SETTLED: 3 };
 const SPLIT_STATUSES = new Set(["CREATED", "RELEASED", "SETTLED", "FAILED"]);
@@ -17,6 +21,12 @@ export type SplitGateway = {
 };
 
 const liveSplits: SplitGateway = { createFundsSplit, retrieveFundsSplit };
+
+export type ReleaseGateway = {
+  releaseFundsSplit: (splitId: string, requestId: string) => Promise<JsonObject>;
+};
+
+const liveRelease: ReleaseGateway = { releaseFundsSplit };
 
 export function canAdvanceSplit(current: string, next: string): boolean {
   if (!SPLIT_STATUSES.has(next) || current === next) return false;
@@ -29,13 +39,35 @@ function knownSplitStatus(value: string | undefined): "CREATED" | "RELEASED" | "
   return undefined;
 }
 
-async function note(offerId: string, type: string, message: string, actorId?: string): Promise<void> {
+async function note(offerId: string, type: string, message: string, actorId?: string, milestoneId?: string): Promise<void> {
   await Activity.create({
     offerId,
     actorId,
     type,
     message,
+    ...(milestoneId ? { meta: { milestoneId } } : {}),
   });
+}
+
+async function loadParticipant(offerId: string, userId: string): Promise<OfferDocument> {
+  await connectDb();
+  if (!Types.ObjectId.isValid(offerId)) throw new NotFound("Offer not found.");
+  const offer = await Offer.findById(offerId);
+  if (!offer) throw new NotFound("Offer not found.");
+  if (offer.buyerId.toString() !== userId && offer.sellerId.toString() !== userId) {
+    throw new Forbidden("You're not part of this offer.");
+  }
+  return offer;
+}
+
+function milestoneOf(offer: OfferDocument, milestoneId: string): OfferDocument["milestones"][number] {
+  const milestone = offer.milestones.find((item) => item._id.toString() === milestoneId);
+  if (!milestone) throw new NotFound("Milestone not found.");
+  return milestone;
+}
+
+function viewerRole(offer: OfferDocument, userId: string): "BUYER" | "SELLER" {
+  return offer.buyerId.toString() === userId ? "BUYER" : "SELLER";
 }
 
 /**
@@ -148,20 +180,37 @@ export async function advanceSplitStatus(splitId: string, next: string): Promise
     $or: [{ "milestones.escrow.sellerSplit.splitId": splitId }, { "milestones.escrow.revenueSplit.splitId": splitId }],
   });
   if (!offer) return undefined;
+  const touched: OfferDocument["milestones"][number][] = [];
   for (const milestone of offer.milestones) {
-    if (milestone.escrow?.sellerSplit?.splitId === splitId && canAdvanceSplit(milestone.escrow.sellerSplit.status, status)) {
+    const seller = milestone.escrow?.sellerSplit;
+    if (seller?.splitId === splitId && canAdvanceSplit(seller.status, status)) {
       await Offer.updateOne(
-        { _id: offer._id, "milestones.escrow.sellerSplit.splitId": splitId, "milestones.escrow.sellerSplit.status": milestone.escrow.sellerSplit.status },
+        {
+          _id: offer._id,
+          milestones: { $elemMatch: { "escrow.sellerSplit.splitId": splitId, "escrow.sellerSplit.status": seller.status } },
+        },
         { $set: { "milestones.$.escrow.sellerSplit.status": status } },
       );
+      touched.push(milestone);
     }
-    if (milestone.escrow?.revenueSplit?.splitId === splitId && canAdvanceSplit(milestone.escrow.revenueSplit.status, status)) {
+    const revenue = milestone.escrow?.revenueSplit;
+    if (revenue?.splitId === splitId && canAdvanceSplit(revenue.status, status)) {
       await Offer.updateOne(
-        { _id: offer._id, "milestones.escrow.revenueSplit.splitId": splitId, "milestones.escrow.revenueSplit.status": milestone.escrow.revenueSplit.status },
+        {
+          _id: offer._id,
+          milestones: { $elemMatch: { "escrow.revenueSplit.splitId": splitId, "escrow.revenueSplit.status": revenue.status } },
+        },
         { $set: { "milestones.$.escrow.revenueSplit.status": status } },
       );
+      touched.push(milestone);
     }
   }
+  if (status === "FAILED") {
+    for (const milestone of touched) {
+      await markReleaseFailed(offer._id.toString(), milestone._id, "Airwallex could not release these funds.");
+    }
+  }
+  if (status === "SETTLED" || status === "FAILED") await maybeMarkPaid(offer._id.toString());
   return offer._id.toString();
 }
 
@@ -176,6 +225,7 @@ export async function refreshSplits(offerId: string, gateway: SplitGateway = liv
       if (status) await advanceSplitStatus(splitId, status);
     }
   }
+  await maybeMarkPaid(offerId);
 }
 
 export async function markCardPaymentFailed(paymentIntentId: string, next: "FAILED" | "CANCELLED"): Promise<string | undefined> {
@@ -197,4 +247,132 @@ export async function markCardPaymentFailed(paymentIntentId: string, next: "FAIL
     await note(payment.offerId.toString(), "PAYMENT_FAILED", next === "FAILED" ? "Card payment was declined" : "Card payment was cancelled", offer.buyerId.toString());
   }
   return payment.offerId.toString();
+}
+
+async function markReleaseFailed(offerId: string, milestoneId: Types.ObjectId, message: string): Promise<void> {
+  await Offer.updateOne(
+    { _id: offerId, milestones: { $elemMatch: { _id: milestoneId, status: "RELEASING" } } },
+    { $set: { "milestones.$.status": "RELEASE_FAILED", "milestones.$.lastError": message } },
+  );
+}
+
+/** A milestone is paid when every card-rail split has settled. Then the offer can complete. */
+export async function maybeMarkPaid(offerId: string): Promise<void> {
+  const offer = await Offer.findById(offerId);
+  if (!offer) return;
+  for (const milestone of offer.milestones) {
+    if (milestone.status !== "RELEASING") continue;
+    const sellerSettled = milestone.escrow?.sellerSplit?.status === "SETTLED";
+    const revenue = milestone.escrow?.revenueSplit;
+    const revenueSettled = milestone.breakdown.revenueMinor === 0 || revenue?.status === "SETTLED";
+    if (!sellerSettled || !revenueSettled) continue;
+    const paid = await Offer.findOneAndUpdate(
+      { _id: offer._id, milestones: { $elemMatch: { _id: milestone._id, status: "RELEASING" } } },
+      { $set: { "milestones.$.status": "PAID", "milestones.$.paidAt": new Date() }, $unset: { "milestones.$.lastError": "" } },
+    );
+    if (paid) await note(offerId, "MILESTONE_PAID", `${milestone.title} paid`, undefined, milestone._id.toString());
+  }
+
+  const current = await Offer.findById(offerId);
+  if (!current || current.status !== "ACTIVE") return;
+  const statuses = current.milestones.map((milestone) => milestone.status);
+  const terminal = statuses.every((status) => status === "PAID" || status === "REFUNDED");
+  if (!terminal || !statuses.includes("PAID")) return;
+  const completed = await Offer.findOneAndUpdate(
+    { _id: offerId, status: "ACTIVE" },
+    { $set: { status: "COMPLETED", completedAt: new Date() } },
+  );
+  if (completed) await note(offerId, "OFFER_COMPLETED", "Offer completed");
+}
+
+async function releaseHeldSplits(offerId: string, milestoneId: string, gateway: ReleaseGateway): Promise<void> {
+  const offer = await Offer.findById(offerId);
+  const milestone = offer?.milestones.find((item) => item._id.toString() === milestoneId);
+  if (!offer || !milestone) return;
+  const splitIds = [milestone.escrow?.sellerSplit?.splitId, milestone.escrow?.revenueSplit?.splitId].filter(
+    (splitId): splitId is string => Boolean(splitId),
+  );
+  try {
+    if (splitIds.length === 0) throw new Error("This milestone has no funds to release.");
+    for (const splitId of splitIds) {
+      const released = await gateway.releaseFundsSplit(splitId, releaseSplitRequestId(splitId));
+      const status = readString(released, "status") ?? "RELEASED";
+      await advanceSplitStatus(splitId, status);
+      if (status === "FAILED") throw new Error("Airwallex could not release these funds.");
+    }
+    await note(offerId, "FUNDS_RELEASED", `Funds released for ${milestone.title}`, offer.buyerId.toString(), milestoneId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Release failed.";
+    await Offer.updateOne(
+      { _id: offerId, milestones: { $elemMatch: { _id: milestone._id, status: "RELEASING" } } },
+      { $set: { "milestones.$.lastError": message } },
+    );
+  }
+}
+
+export async function approveMilestone(
+  user: UserDocument,
+  offerId: string,
+  milestoneId: string,
+  gateway: ReleaseGateway = liveRelease,
+) {
+  const offer = await loadParticipant(offerId, user._id.toString());
+  const milestone = milestoneOf(offer, milestoneId);
+  if (!milestoneActions(milestone, offer, viewerRole(offer, user._id.toString())).includes("APPROVE")) {
+    throw new InvalidState("That action isn't available.");
+  }
+  if (offer.fundingRail !== "CARD") throw new InvalidState("Wallet release isn't available yet.");
+
+  const deliveries = milestone.deliveries.map((delivery, index) => ({
+    _id: delivery._id,
+    links: delivery.links,
+    note: delivery.note,
+    submittedAt: delivery.submittedAt,
+    ...(index === milestone.deliveries.length - 1
+      ? { review: { decision: "APPROVED" as const, reviewedAt: new Date() } }
+      : delivery.review
+        ? { review: delivery.review }
+        : {}),
+  }));
+  const claimed = await Offer.findOneAndUpdate(
+    { _id: offer._id, status: "ACTIVE", milestones: { $elemMatch: { _id: milestone._id, status: "SUBMITTED" } } },
+    {
+      $set: {
+        "milestones.$.status": "RELEASING",
+        "milestones.$.approvedAt": new Date(),
+        "milestones.$.deliveries": deliveries,
+      },
+      $unset: { "milestones.$.lastError": "" },
+    },
+  );
+  if (!claimed) throw new InvalidState("That action isn't available.");
+  await note(offerId, "MILESTONE_APPROVED", `${user.name} approved ${milestone.title}`, user._id.toString(), milestoneId);
+  await releaseHeldSplits(offerId, milestoneId, gateway);
+  return getOffer(user, offerId);
+}
+
+export async function retryMilestone(
+  user: UserDocument,
+  offerId: string,
+  milestoneId: string,
+  gateway: ReleaseGateway = liveRelease,
+) {
+  const offer = await loadParticipant(offerId, user._id.toString());
+  const milestone = milestoneOf(offer, milestoneId);
+  if (!milestoneActions(milestone, offer, viewerRole(offer, user._id.toString())).includes("RETRY")) {
+    throw new InvalidState("That action isn't available.");
+  }
+  if (milestone.status === "REFUND_FAILED" || milestone.status === "REFUNDING") {
+    throw new InvalidState("Refund retry isn't available yet.");
+  }
+  const claimed = await Offer.findOneAndUpdate(
+    {
+      _id: offer._id,
+      milestones: { $elemMatch: { _id: milestone._id, status: { $in: ["RELEASING", "RELEASE_FAILED"] } } },
+    },
+    { $set: { "milestones.$.status": "RELEASING" }, $unset: { "milestones.$.lastError": "" } },
+  );
+  if (!claimed) throw new InvalidState("That action isn't available.");
+  await releaseHeldSplits(offerId, milestoneId, gateway);
+  return getOffer(user, offerId);
 }
