@@ -1,6 +1,6 @@
 # 08 — Seeding
 
-`npm run seed` (`tsx scripts/seed.ts`) prepares a demo environment that anyone can log in to immediately.
+`npm run seed` (`tsx --env-file=.env.local scripts/seed.ts`) prepares a demo environment that anyone can log in to immediately.
 
 ## Goals
 
@@ -37,7 +37,7 @@ All use password `SEED_PASSWORD` (default `demo1234`). All are `kind: SEED`. Tho
 | Aiko Tanaka | `aiko@demo.test` | Motion designer | ✓ | Both |
 | Omar Haddad | `omar@demo.test` | Indie game studio owner | ✓ | Both |
 
-Each goes through the same provisioning as a real sign-up (see [05 F1](./05-user-flows.md#f1-sign-up)): create a `BUSINESS` connected account, submit, force `ACTIVE`, then the **welcome credit** (`WELCOME_CREDIT_AMOUNT`, default $5,000). Buyers get an extra seed top-up (for example +$20,000) so wallet-rail demos never run dry. If a user already has an `ACTIVE` account id stored, provisioning reuses it. It does not create a second account.
+Each goes through account provisioning (see [05 F1](./05-user-flows.md#f1-sign-up)): create a `BUSINESS` connected account, submit, force `ACTIVE`, then the **welcome credit** (`WELCOME_CREDIT_AMOUNT`, default $5,000). Seed users do not get a welcome offer — that offer is only created for a new `REGULAR` signup, and it needs one of these sellers to already be `READY`. Buyers and Both get an extra seed top-up of $20,000 so wallet-rail demos never run dry. If a user already has an `ACTIVE` account id stored, provisioning reuses it. It does not create a second account. A `--hard` reset bumps `seedVersion`, and the next seed uses a new identifier (`seed-maya-v2`) so the old connected account is left behind.
 
 ### 3. Seed offers
 
@@ -103,11 +103,13 @@ seed():
   print summary table: users, acct ids, balances, offers by state
 ```
 
+`scripts/seed.ts` currently runs through the user loop and the buyer top-up. The offer loop waits for the wallet rail.
+
 Add a `seedKey` field to offers (sparse unique index) for seed idempotency.
 
 ## Reset
 
-`npm run reset` (`tsx scripts/reset.ts`)
+`npm run reset` (`tsx --env-file=.env.local scripts/reset.ts`)
 
 - Deletes Mongo demo data: `offers`, `payments`, `activity`, `webhook_events`, `airwallex_logs`, and **non-seed** users.
 - **Does not delete Airwallex connected accounts.** Sandbox CAs can't be simply deleted (offboarding is a separate workflow). Seed users are kept, so their `acct_...` IDs are reused on the next seed.

@@ -48,3 +48,7 @@ export function sellerTransferRequestId(milestoneId: string): string {
 export function welcomeCreditRequestId(userId: string): string {
   return assertRequestId(`welcome:${userId}`, SCALE_MAX);
 }
+
+export function seedTopUpRequestId(userId: string, seedVersion: number): string {
+  return assertRequestId(`seedtopup:${userId}:${seedVersion}`, SCALE_MAX);
+}

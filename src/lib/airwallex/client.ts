@@ -1,3 +1,4 @@
+import { airwallexContext } from "./context";
 import { AirwallexError } from "./errors";
 import { loadAirwallexEnv, type AirwallexConfig } from "./env";
 import { asObject, readString, type JsonObject } from "./json";
@@ -15,12 +16,13 @@ export type AirwallexLogEntry = {
   durationMs: number;
   relatedOfferId?: string;
   relatedMilestoneId?: string;
+  relatedUserId?: string;
 };
 
 type Logger = (entry: AirwallexLogEntry) => void;
 
 let logger: Logger = () => {
-  // B2 persists each entry to airwallex_logs. Spike scripts attach a file logger.
+  // The Next server installs a Mongo logger. Spike scripts attach their own.
 };
 
 export function setAirwallexLogger(next: Logger): void {
@@ -35,7 +37,17 @@ export type RequestOptions = {
   apiVersion?: string | null;
   relatedOfferId?: string;
   relatedMilestoneId?: string;
+  relatedUserId?: string;
 };
+
+function relations(options: RequestOptions): Pick<AirwallexLogEntry, "relatedOfferId" | "relatedMilestoneId" | "relatedUserId"> {
+  const current = airwallexContext();
+  return {
+    relatedOfferId: options.relatedOfferId ?? current?.relatedOfferId,
+    relatedMilestoneId: options.relatedMilestoneId ?? current?.relatedMilestoneId,
+    relatedUserId: options.relatedUserId ?? current?.relatedUserId,
+  };
+}
 
 export type AirwallexResponse<T> = {
   data: T;
@@ -231,8 +243,7 @@ export async function requestDetailed<T>(
       status: 0,
       responseBody: { message },
       durationMs: Date.now() - started,
-      relatedOfferId: options.relatedOfferId,
-      relatedMilestoneId: options.relatedMilestoneId,
+      ...relations(options),
     });
     throw new AirwallexError(0, "network_error", message, null, undefined, undefined);
   }
@@ -246,8 +257,7 @@ export async function requestDetailed<T>(
     status: response.status,
     responseBody,
     durationMs: Date.now() - started,
-    relatedOfferId: options.relatedOfferId,
-    relatedMilestoneId: options.relatedMilestoneId,
+    ...relations(options),
   });
 
   if (response.status === 401 && !retried) {

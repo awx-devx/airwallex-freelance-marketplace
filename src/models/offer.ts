@@ -13,6 +13,14 @@ const SplitRefSchema = new Schema(
   { _id: false },
 );
 
+const RefundRefSchema = new Schema(
+  {
+    refundId: { type: String, required: true },
+    status: { type: String, enum: ["RECEIVED", "ACCEPTED", "SETTLED", "FAILED"], required: true },
+  },
+  { _id: false },
+);
+
 const TransferRefSchema = new Schema(
   {
     transferId: { type: String, required: true },
@@ -59,10 +67,7 @@ const MilestoneSchema = new Schema(
     escrow: {
       sellerSplit: SplitRefSchema,
       revenueSplit: SplitRefSchema,
-      refund: {
-        refundId: { type: String, required: true },
-        status: { type: String, enum: ["RECEIVED", "ACCEPTED", "SETTLED", "FAILED"], required: true },
-      },
+      refund: RefundRefSchema,
       sellerTransfer: TransferRefSchema,
       revenueTransfer: TransferRefSchema,
       refundTransfer: TransferRefSchema,
@@ -133,7 +138,18 @@ export type OfferDocument = {
     amountMinor: number;
     breakdown: { sellerMinor: number; revenueMinor: number; reserveMinor: number };
     status: (typeof MilestoneStatusSchema.options)[number];
+    deliveries: Array<{
+      links: string[];
+      note?: string;
+      submittedAt: Date;
+      review?: { decision: "APPROVED" | "CHANGES_REQUESTED"; comment?: string; reviewedAt: Date };
+    }>;
   }>;
+  sentAt?: Date;
+  acceptedAt?: Date;
+  fundedAt?: Date;
+  completedAt?: Date;
+  closedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 };

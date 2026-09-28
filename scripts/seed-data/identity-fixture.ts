@@ -72,6 +72,40 @@ export const identityFixtures: Record<FixtureRole, IdentityFixture> = {
 
 export type AccountPayloadLevel = "minimal" | "identification" | "recipient";
 
+/** Fixture identity for a real user, seed user, or the revenue account. Identifier must stay stable. */
+export function identityForAccount(input: {
+  role: FixtureRole;
+  email: string;
+  identifier: string;
+  businessName: string;
+  personName: string;
+}): IdentityFixture {
+  const [first = "Account", ...rest] = input.personName.trim().split(/\s+/);
+  const last = rest.join(" ") || "User";
+  let hash = 0;
+  for (const char of input.identifier) hash = (hash * 33 + char.charCodeAt(0)) % 1000;
+  return {
+    role: input.role,
+    email: input.email,
+    identifier: input.identifier,
+    nickname: input.businessName,
+    firstName: first,
+    lastName: last,
+    dateOfBirth: "1990-01-01",
+    nationality: SPIKE_COUNTRY,
+    phoneNumber: `202555${String(hash).padStart(3, "0")}`,
+    occupation: "PROGRAMMER",
+    businessName: input.businessName,
+    address: {
+      addressLine1: "1 Market Street",
+      countryCode: SPIKE_COUNTRY,
+      postcode: "94105",
+      state: "CA",
+      suburb: "San Francisco",
+    },
+  };
+}
+
 function addressOf(person: IdentityFixture): JsonObject {
   return {
     address_line1: person.address.addressLine1,

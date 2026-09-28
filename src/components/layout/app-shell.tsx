@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { DemoBanner, type DemoBannerVariant } from "@/components/layout/demo-banner";
 import { TopBar } from "@/components/layout/top-bar";
@@ -18,7 +18,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const me = useMe();
   const user = me.data;
-  const wallet = useWallet({ enabled: Boolean(user) });
+  const wallet = useWallet({ enabled: Boolean(user?.airwallex.accountId) });
+  const step = user?.provisioning.step;
+  const previousStep = useRef(step);
+  const refetchWallet = wallet.refetch;
+
+  useEffect(() => {
+    const prior = previousStep.current;
+    previousStep.current = step;
+    if (!prior || prior === "READY" || prior === "WELCOME_CREDITED") return;
+    if (step === "WELCOME_CREDITED" || step === "READY") void refetchWallet();
+  }, [refetchWallet, step]);
   const logout = useLogout();
   const sessionReady = Boolean(user) && (user?.provisioning.step === "READY" || pathname === "/welcome");
 

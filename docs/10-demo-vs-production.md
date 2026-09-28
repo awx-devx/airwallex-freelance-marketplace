@@ -51,10 +51,10 @@ rg -n "SANDBOX:" src scripts
 | **Guest access** | "Continue as guest" logs into a **shared** seed account (`src/services/auth.ts`) | No shared accounts. Per-visitor ephemeral sandboxes if a demo mode is needed |
 | **Seed login list** | Login page lists seed accounts and their password | Never |
 | **User directory** | Any user can search all users by email | Invite by email/link; privacy controls |
-| **KYC / onboarding** | Fixture **business** identity (`scripts/seed-data/identity-fixture.ts`): a company plus one director, T&Cs agreed on the user's behalf, forced `ACTIVE` via simulation API. The same payload is used for seed users, the fee account, and sign-ups | Hosted Onboarding / Embedded KYC; real business or individual onboarding; real consent; handle `ACTION_REQUIRED` and RFIs; async activation |
-| **Provisioning** | Inline during sign-up, polled by the browser (`src/components/screens/welcome-screen.tsx`) | Background job with retries and alerting |
-| **Welcome credit** | Platform gives every user $5,000 from its sandbox wallet via CA Transfer | Not a thing. Balances come from real payments / deposits |
-| **Welcome offer** | Auto-generated offer from a seed seller | Not a thing |
+| **KYC / onboarding** | Fixture **business** identity (`scripts/seed-data/identity-fixture.ts`, `src/services/provisioning.ts`): a company plus one director, T&Cs agreed on the user's behalf, forced `ACTIVE` via simulation API. The same payload is used for seed users, the fee account, and sign-ups | Hosted Onboarding / Embedded KYC; real business or individual onboarding; real consent; handle `ACTION_REQUIRED` and RFIs; async activation |
+| **Provisioning** | Inline during sign-up, polled by the browser (`src/services/provisioning.ts`, `src/components/screens/welcome-screen.tsx`) | Background job with retries and alerting |
+| **Welcome credit** | Platform gives every user $5,000 from its sandbox wallet via CA Transfer (`src/services/provisioning.ts`) | Not a thing. Balances come from real payments / deposits |
+| **Welcome offer** | Auto-generated offer from a seed seller (`src/services/offers.ts`) | Not a thing |
 | **Seller cancel** | Seller can cancel a funded milestone and trigger a buyer refund unilaterally; buyer can cancel a submitted milestone unilaterally | Cancellation policy, mutual consent, and dispute/arbitration flow |
 | **No auto-approval** | Money is held until the buyer acts (forever) | Auto-approve after N days of buyer inactivity (with notifications); hold-period limits per Airwallex config |
 | **Refunds after release** | Not supported | Funds Split Reversal on settled split (claw back from seller) plus refund, via dispute resolution |
@@ -75,7 +75,7 @@ rg -n "SANDBOX:" src scripts
 | **Mock card form** | `src/components/domain/mock-card-form.tsx` stands in for the Airwallex Drop-in. `4035501000000008` succeeds; `4012000300001003` declines. `src/components/screens/pay-screen.tsx` records that outcome in the mock store before reconcile | `DropInCheckout` renders `@airwallex/components-sdk` against a real PaymentIntent |
 | **`/dev/ui-kit` page** | Component showcase (`src/app/dev/ui-kit/page.tsx`) available when `NODE_ENV` is not production, and optionally in production via `NEXT_PUBLIC_ENABLE_UI_KIT` | Internal tool, not shipped to users |
 | **Client-side auth gating in mock mode** | `AppShell` redirects based on `useMe()`; `src/proxy.ts` skips the cookie check while mocks are on | Server-side session check (`src/proxy.ts`) always |
-| **Seed/reset scripts** | Move sandbox money, create accounts, wipe DB | Not present in production builds |
+| **Seed/reset scripts** | Move sandbox money, create accounts, wipe DB (`scripts/seed.ts`, `scripts/reset.ts`) | Not present in production builds |
 | **Compliance** | None (no sanctions screening UI, no tax forms, no ToS) | Platform ToS, seller agreements, tax forms (for example the Embedded Tax Form component), transaction monitoring response (RFIs) |
 | **Secrets** | `.env.local` | Secret manager, key rotation, scoped/restricted API keys ([API key best practices](https://www.airwallex.com/docs/developer-tools/api/api-key-best-practices.md)) |
 

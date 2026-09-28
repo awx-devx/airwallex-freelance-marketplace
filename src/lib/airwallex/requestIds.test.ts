@@ -8,6 +8,7 @@ import {
   reverseSplitRequestId,
   sellerSplitRequestId,
   sellerTransferRequestId,
+  seedTopUpRequestId,
   welcomeCreditRequestId,
 } from "@/lib/airwallex/requestIds";
 
@@ -26,6 +27,7 @@ describe("request ids", () => {
     expect(chargeRequestId(offerId)).toBe(`ch:${offerId}`);
     expect(sellerTransferRequestId(milestoneId)).toBe(`cat:${milestoneId}:seller`);
     expect(welcomeCreditRequestId(offerId)).toBe(`welcome:${offerId}`);
+    expect(seedTopUpRequestId(offerId, 1)).toBe(`seedtopup:${offerId}:1`);
 
     for (const id of [
       paymentIntentRequestId(offerId, 1),

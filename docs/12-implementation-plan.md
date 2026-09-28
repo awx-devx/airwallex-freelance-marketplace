@@ -122,6 +122,7 @@ Small standalone `tsx` scripts in `scripts/spike/`, sharing the real `src/lib/ai
 ### B2 — Airwallex client, provisioning, seed users
 
 - `src/lib/airwallex/*` + `airwallex_logs` logging; `services/provisioning.ts`; `POST /api/me/provisioning`.
+- Welcome offer at the end of provisioning for a `REGULAR` signup (`services/offers.ts` `createWelcomeOffer`), so the user can reach `READY`. Seed and revenue accounts skip it.
 - `scripts/seed.ts` users portion: one `BUSINESS` Revenue CA (service fee, no login, no welcome credit) and one `BUSINESS` CA per seed user (8), each via `services/provisioning.ts` and `scripts/seed-data/identity-fixture.ts`. `scripts/reset.ts` does not delete Airwallex accounts.
 - `GET /api/wallet` (balances) so the `WalletChip` works.
 
@@ -129,7 +130,7 @@ Small standalone `tsx` scripts in `scripts/spike/`, sharing the real `src/lib/ai
 
 ### B3 — Offers (no money)
 
-- `services/offers.ts`: create/send, decline, withdraw, deliveries, request changes; welcome offer at the end of provisioning.
+- `services/offers.ts`: create/send, decline, withdraw, deliveries, request changes. The welcome offer already exists from B2.
 - Routes: `offers` list/create/get, decline, withdraw, deliveries, request-changes, activity.
 
 **Demo:** send offers between real users.
