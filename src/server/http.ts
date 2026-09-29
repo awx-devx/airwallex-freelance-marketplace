@@ -29,9 +29,13 @@ function assertSameOrigin(request: Request): void {
   if (request.method === "GET" || request.method === "HEAD") return;
   const origin = request.headers.get("origin");
   if (!origin) return;
-  if (origin !== new URL(request.url).origin) {
-    throw new Forbidden("Cross-origin requests are refused.");
-  }
+  // request.url is the internal host behind a tunnel/proxy; match Origin to the
+  // public Host the browser used so CSRF still fails (Origin ≠ Host) but
+  // cloudflared / ngrok same-site posts succeed.
+  if (origin === new URL(request.url).origin) return;
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+  if (host && new URL(origin).host === host) return;
+  throw new Forbidden("Cross-origin requests are refused.");
 }
 
 async function parseBody<T>(request: Request, schema?: ZodType<T>): Promise<T> {
