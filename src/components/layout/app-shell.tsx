@@ -47,6 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-svh flex-col bg-surface">
+      <DemoBanner variant={banner} name={user?.isGuest ? user.name : undefined} />
       <TopBar
         user={user}
         balance={wallet.data?.balances[0]}
@@ -56,7 +57,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         onLogout={() => logout.mutate()}
       />
       <div className="flex flex-1 flex-col pt-8">
-        <DemoBanner variant={banner} name={user?.isGuest ? user.name : undefined} />
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">
           {me.isLoading ? (
             <div className="flex flex-col gap-3" aria-label="Loading">

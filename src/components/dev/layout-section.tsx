@@ -11,12 +11,12 @@ const maya = seedUser("usr_maya");
 export function LayoutSection() {
   return (
     <>
-      <KitSection id="app-shell" title="AppShell" note="Top bar, banner, and the content column. Redirects stay off on this page.">
+      <KitSection id="app-shell" title="AppShell" note="Compact banner above the top bar, then the content column. Redirects stay off on this page.">
         <Variant caption="AppShell / preview" className="@min-[720px]:col-span-2">
           <div className="overflow-visible rounded-md border border-border bg-surface pb-8">
-            <TopBar user={maya} balance={sampleBalance} showUiKit pinned={false} onLogout={() => undefined} />
             <DemoBanner variant="mock" dismissible={false} />
-            <div className="px-6 py-6">
+            <TopBar user={maya} balance={sampleBalance} showUiKit pinned={false} onLogout={() => undefined} />
+            <div className="px-6 py-6 pt-10">
               <PageHeader title="Hi Maya" subtitle="Your offers" />
             </div>
           </div>
@@ -30,7 +30,7 @@ export function LayoutSection() {
           <TopBar user={maya} balanceLoading pinned={false} onLogout={() => undefined} />
         </Variant>
       </KitSection>
-      <KitSection id="demo-banner" title="DemoBanner" note="Sandbox, guest, and mock-data notices.">
+      <KitSection id="demo-banner" title="DemoBanner" note="Compact strip above the top bar. Sandbox, guest, and mock-data notices.">
         <Variant caption="DemoBanner / sandbox" className="@min-[720px]:col-span-2">
           <DemoBanner variant="sandbox" dismissible={false} />
         </Variant>

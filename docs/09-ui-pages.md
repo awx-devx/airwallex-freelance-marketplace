@@ -157,9 +157,9 @@ Every component below must appear on the **UI kit demo page** (§4) in all liste
 
 | Component | Notes |
 | --- | --- |
-| `AppShell` | Top bar + `DemoBanner` + content container; handles client-side auth/provisioning redirects |
+| `AppShell` | Compact `DemoBanner` above the top bar, then content; handles client-side auth/provisioning redirects |
 | `TopBar` | Sticky. From `md`: logo mark, `WalletChip`, **New offer**, theme toggle, user `DropdownMenu` (Wallet, Platform, UI kit in dev, Log out). Below `md`: logo mark and a menu button. The panel holds New offer, Wallet (with the balance), Platform, UI kit in dev, the theme toggle, and Log out. A centered **Powered by Airwallex** tab hangs below the bar at every width, with square corners so it clears the controls |
-| `DemoBanner` | Sandbox notice + test card; guest variant; mock-mode variant ("Mock data — no backend") |
+| `DemoBanner` | Compact strip **above** the top bar (so it never sits under the Airwallex notch). Sandbox notice + test card; guest variant; mock-mode variant ("Mock data — no backend") |
 | `PageHeader` | Title, subtitle, right-side actions, optional back link |
 | `Section` | Titled group with optional count and action |
 

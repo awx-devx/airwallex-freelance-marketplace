@@ -40,13 +40,14 @@ export function DemoBanner({
   if (dismissed) return null;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted px-4 py-2 text-sm sm:px-6">
-      <p className="min-w-0">{copy}</p>
+    <div className="flex items-center justify-between gap-2 border-b border-border bg-muted px-4 py-1 text-xs text-muted-foreground sm:px-6">
+      <p className="min-w-0 truncate">{copy}</p>
       {dismissible ? (
         <Button
           type="button"
           variant="ghost"
           size="sm"
+          className="h-7 shrink-0 px-2 text-xs"
           onClick={() => {
             window.localStorage.setItem(key, "1");
             window.dispatchEvent(new Event("awx-storage"));
