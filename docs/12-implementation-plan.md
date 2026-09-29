@@ -84,7 +84,7 @@ Contract frozen in [06](./06-api-routes.md) on 2026-09-26. The routes the UI cal
 
 - Loading/empty/error states everywhere; keyboard and focus pass; responsiveness pass at 375, 768, and 1024 ([09](./09-ui-pages.md#responsiveness)); light and dark theme switch with a full dark token set ([09](./09-ui-pages.md#themes)); copy pass ([09 §6](./09-ui-pages.md#6-copy-guidelines)).
 - Review [06](./06-api-routes.md) against what the UI actually needed. Update `src/contracts` + docs for any change, then **freeze** the contract. After this, contract changes need a doc update in the same commit.
-- Optional: deploy a **UI preview** (Vercel, `NEXT_PUBLIC_API_MOCKS=true`, `ALLOW_MOCKS_IN_PROD=true`) to share the look and feel.
+- Optional: deploy a **UI preview** (Replit, `NEXT_PUBLIC_API_MOCKS=true`, `ALLOW_MOCKS_IN_PROD=true`) to share the look and feel.
 
 **Demo:** clickable product on mock data; stakeholders sign off on UX before backend work.
 
@@ -169,7 +169,7 @@ Small standalone `tsx` scripts in `scripts/spike/`, sharing the real `src/lib/ai
 
 - Run the full demo script with `NEXT_PUBLIC_API_MOCKS=false`.
 - Stretch, implemented: withdraw to bank, send to user, `SEQUENTIAL_MILESTONES` (default false).
-- Deploy to Vercel + Atlas; register the webhook; rehearse. Seed has been run locally against Atlas.
+- Deploy to Replit + Atlas; register the webhook; rehearse. Seed has been run locally against Atlas.
 - Audit: `rg "DEMO-ONLY:"` matches the inventory in [10](./10-demo-vs-production.md).
 
 ---

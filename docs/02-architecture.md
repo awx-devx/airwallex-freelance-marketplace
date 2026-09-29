@@ -215,7 +215,7 @@ If we later add auto-approval timers or retry queues, the first choice should st
 
 ## Deployment
 
-- **Vercel** (or any Node host) plus **MongoDB Atlas**.
-- The webhook URL `https://<host>/api/webhooks/airwallex` is registered in the Airwallex sandbox web app.
+- **Replit** (Autoscale by default, Reserved VM when webhooks must stay up) plus **MongoDB Atlas**. See [11 §3](./11-setup-and-runbook.md#3-deploying-the-demo-replit).
+- The webhook URL `https://<host>/api/webhooks/airwallex` is registered in the Airwallex sandbox web app. Use the published `*.replit.app` host, not the editor URL.
 - For local development, expose localhost with a tunnel (`cloudflared` or `ngrok`) or rely on the **sync fallback** (see [07-webhooks.md](./07-webhooks.md#local-development)).
 - Webhook route must run on the **Node.js runtime** (`export const runtime = 'nodejs'`) so we can read the raw body and use `crypto`.
