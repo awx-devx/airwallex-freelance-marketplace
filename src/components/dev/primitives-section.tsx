@@ -475,7 +475,6 @@ function MenuSection() {
             <DropdownMenuSeparator />
             <DropdownMenuItem>Wallet</DropdownMenuItem>
             <DropdownMenuItem>Platform</DropdownMenuItem>
-            <DropdownMenuItem>UI kit</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem>Log out</DropdownMenuItem>
           </DropdownMenuContent>

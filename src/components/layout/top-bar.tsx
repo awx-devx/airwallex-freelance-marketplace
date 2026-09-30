@@ -34,7 +34,6 @@ export function TopBar({
   balance,
   balanceLoading = false,
   balanceError = false,
-  showUiKit = false,
   pinned = true,
   onLogout,
 }: {
@@ -42,7 +41,6 @@ export function TopBar({
   balance?: BalanceDTO;
   balanceLoading?: boolean;
   balanceError?: boolean;
-  showUiKit?: boolean;
   pinned?: boolean;
   onLogout?: () => void;
 }) {
@@ -84,7 +82,6 @@ export function TopBar({
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => router.push("/wallet")}>Wallet</DropdownMenuItem>
                 <DropdownMenuItem onSelect={() => router.push("/platform")}>Platform</DropdownMenuItem>
-                {showUiKit ? <DropdownMenuItem onSelect={() => router.push("/dev/ui-kit")}>UI kit</DropdownMenuItem> : null}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onSelect={() => onLogout?.()}>Log out</DropdownMenuItem>
               </DropdownMenuContent>
@@ -121,7 +118,6 @@ export function TopBar({
                   <WalletChip balance={balance} loading={balanceLoading} error={balanceError} />
                 </MenuLink>
                 <MenuLink onClick={() => go("/platform")}>Platform</MenuLink>
-                {showUiKit ? <MenuLink onClick={() => go("/dev/ui-kit")}>UI kit</MenuLink> : null}
               </nav>
               <div className="mt-auto flex flex-col gap-4 pt-6">
                 <div className="flex flex-col gap-2">

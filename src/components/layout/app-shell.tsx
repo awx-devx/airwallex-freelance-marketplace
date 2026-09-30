@@ -53,7 +53,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         balance={wallet.data?.balances[0]}
         balanceLoading={wallet.isLoading}
         balanceError={wallet.isError}
-        showUiKit={publicConfig.uiKitEnabled}
         onLogout={() => logout.mutate()}
       />
       <div className="flex flex-1 flex-col pt-8">
