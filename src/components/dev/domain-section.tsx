@@ -91,6 +91,7 @@ const delivery = {
 
 export function DomainSection({ viewerRole }: { viewerRole: ViewerRole }) {
   const maya = seedUser("usr_maya");
+  const social = seedOffer("off_social", "usr_hannah");
   const headers = offerHeaders(viewerRole);
 
   return (
@@ -209,15 +210,34 @@ export function DomainSection({ viewerRole }: { viewerRole: ViewerRole }) {
         {(["BUYER", "SELLER"] as const).flatMap((role) =>
           MILESTONE_STATUSES.map((status) => (
             <Variant key={`${role}-${status}`} caption={`MilestoneCard / ${status} / ${role}`} className="@min-[720px]:col-span-2">
-              <MilestoneCard milestone={milestoneFor(status, role)} payeeName={payeeName} viewerRole={role} />
+              <MilestoneCard
+                milestone={milestoneFor(status, role)}
+                payeeName={payeeName}
+                buyerName={social.buyer.name}
+                viewerRole={role}
+                fundingRail={social.fundingRail}
+              />
             </Variant>
           )),
         )}
         <Variant caption="MilestoneCard / releasing stuck / retry" className="@min-[720px]:col-span-2">
-          <MilestoneCard milestone={milestoneFor("RELEASING", "BUYER", { lastError: "Timed out waiting for funds_split.settled" })} payeeName={payeeName} viewerRole="BUYER" />
+          <MilestoneCard
+            milestone={milestoneFor("RELEASING", "BUYER", { lastError: "Timed out waiting for funds_split.settled" })}
+            payeeName={payeeName}
+            buyerName={social.buyer.name}
+            viewerRole="BUYER"
+            fundingRail={social.fundingRail}
+          />
         </Variant>
         <Variant caption="MilestoneCard / still waiting" className="@min-[720px]:col-span-2">
-          <MilestoneCard milestone={milestoneFor("RELEASING", "BUYER")} payeeName={payeeName} viewerRole="BUYER" timedOut />
+          <MilestoneCard
+            milestone={milestoneFor("RELEASING", "BUYER")}
+            payeeName={payeeName}
+            buyerName={social.buyer.name}
+            viewerRole="BUYER"
+            fundingRail={social.fundingRail}
+            timedOut
+          />
         </Variant>
       </KitSection>
 

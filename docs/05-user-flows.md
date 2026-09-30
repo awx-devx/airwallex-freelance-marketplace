@@ -157,7 +157,7 @@ Milestone → `CHANGES_REQUESTED`, review comment saved. The seller sees the com
 
 ## F9. Cancel a milestone / refund (buyer or seller)
 
-**UI:** a **Cancel milestone** action (confirm dialog: "$X will be refunded to the buyer's card") on unreleased milestones. There's also **Cancel remaining contract**, which applies the cancel to every unreleased milestone.
+**UI:** a **Cancel milestone** action on unreleased milestones. The confirm dialog names where the money returns: the buyer reads "$X will be refunded to your card" on the card rail, or "your wallet" on the wallet rail; the seller reads "$X will be refunded to {buyer}'s card" or wallet. **Cancel remaining** uses the same destination for every unreleased milestone.
 
 **Server (`escrow.refundMilestone`):**
 

@@ -12,6 +12,7 @@ import { FeeBreakdown } from "@/components/domain/fee-breakdown";
 import { MilestoneCard } from "@/components/domain/milestone-card";
 import { OfferActionBar } from "@/components/domain/offer-action-bar";
 import { OfferHeader } from "@/components/domain/offer-header";
+import { refundDescription } from "@/components/domain/refund-copy";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ErrorState } from "@/components/ui/error-state";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -113,7 +114,9 @@ export function OfferScreen({ id }: { id: string }) {
             key={milestone.id}
             milestone={milestone}
             payeeName={offer.seller.name}
+            buyerName={offer.buyer.name}
             viewerRole={offer.viewerRole}
+            fundingRail={offer.fundingRail}
             timedOut={sync.timedOut && milestone.isPending}
             pendingAction={pendingMilestone(milestone.id)}
             onSync={() => sync.syncNow.mutate()}
@@ -131,7 +134,11 @@ export function OfferScreen({ id }: { id: string }) {
         open={cancelOpen}
         onOpenChange={setCancelOpen}
         title="Cancel remaining milestones?"
-        description="Milestones that haven't been released will be refunded to the buyer."
+        description={refundDescription({
+          viewerRole: offer.viewerRole,
+          fundingRail: offer.fundingRail,
+          buyerName: offer.buyer.name,
+        })}
         confirmLabel="Cancel remaining"
         destructive
         onConfirm={(reason) => actions.cancelRemaining.mutate(reason || undefined)}

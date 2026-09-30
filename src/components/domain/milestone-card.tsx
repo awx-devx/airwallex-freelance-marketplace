@@ -6,6 +6,7 @@ import type { MilestoneAction, MilestoneDTO, ViewerRole } from "@/contracts/offe
 import { cardReleaseAccepted } from "@/contracts/permissions";
 import { formatDay } from "@/components/domain/format";
 import { Money } from "@/components/domain/money";
+import { refundDescription } from "@/components/domain/refund-copy";
 import { releasedAwaitingSettlement } from "@/components/domain/status";
 import { StatusPill } from "@/components/domain/status-pill";
 import { DeliveryForm } from "@/components/domain/delivery-form";
@@ -26,7 +27,9 @@ import { formatMoney } from "@/lib/money";
 export function MilestoneCard({
   milestone,
   payeeName,
+  buyerName,
   viewerRole,
+  fundingRail,
   timedOut = false,
   pendingAction,
   onAction,
@@ -34,7 +37,9 @@ export function MilestoneCard({
 }: {
   milestone: MilestoneDTO;
   payeeName: string;
+  buyerName: string;
   viewerRole: ViewerRole;
+  fundingRail?: "CARD" | "WALLET";
   timedOut?: boolean;
   pendingAction?: MilestoneAction;
   onAction?: (action: MilestoneAction, payload?: { links?: string[]; note?: string; comment?: string; reason?: string }) => void;
@@ -102,7 +107,7 @@ export function MilestoneCard({
       ) : null}
       {milestone.status === "PAID" && milestone.paidAt ? (
         <p className="text-sm">
-          Paid to {payeeName} · {formatDay(milestone.paidAt)}
+          {viewerRole === "SELLER" ? "Paid to you" : `Paid to ${payeeName}`} · {formatDay(milestone.paidAt)}
         </p>
       ) : null}
       {milestone.status === "PAID" || milestone.status === "REFUNDED" ? <EscrowLegList legs={milestone.escrowLegs} /> : null}
@@ -127,7 +132,12 @@ export function MilestoneCard({
         open={cancelOpen}
         onOpenChange={setCancelOpen}
         title="Cancel milestone"
-        description={`${formatMoney(milestone.amount.amountMinor, milestone.amount.currency)} will be refunded to the buyer.`}
+        description={refundDescription({
+          viewerRole,
+          fundingRail,
+          buyerName,
+          amount: formatMoney(milestone.amount.amountMinor, milestone.amount.currency),
+        })}
         confirmLabel="Cancel milestone"
         destructive
         onConfirm={(reason) => {

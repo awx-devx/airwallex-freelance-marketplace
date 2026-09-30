@@ -249,16 +249,16 @@ Each page is a thin `page.tsx` that renders a client **screen** component. Stand
 - **Mutations:** `useOfferAction(id)`, `useMilestoneAction(id)`
 - **UI (top to bottom):**
   1. `OfferHeader` (title, `StatusPill`, seller → buyer, total, short ref)
-  2. `OfferActionBar` driven by `offer.allowedActions` (Accept & pay navigates to `/offers/[id]/pay`)
+  2. `OfferActionBar` driven by `offer.allowedActions` (Accept & pay navigates to `/offers/[id]/pay`). **Cancel remaining** confirms with the same refund destination as a single cancel: the buyer reads "your card" or "your wallet"; the seller reads "{buyer}'s card" or wallet.
   3. `EscrowSummary`
   4. `MilestoneCard` list, each driven by `milestone.allowedActions`:
      - `SUBMIT_DELIVERY` → `DeliveryForm`
      - `APPROVE` / `REQUEST_CHANGES` → latest `DeliveryView` + `ReviewActions`
-     - `CANCEL` → overflow menu item → `ConfirmDialog` ("$X will be refunded to the buyer")
+     - `CANCEL` → overflow menu item → `ConfirmDialog`. The buyer reads "$X will be refunded to your card" (wallet rail: "your wallet"). The seller reads "$X will be refunded to {buyer}'s card" (or wallet).
      - `RETRY` → button on failed/stuck milestones
      - pending, release not accepted yet → spinner + "Waiting for Airwallex…" + **Sync** (and "Still waiting" after the 60s poll)
      - card splits already `RELEASED` → **Released**, no spinner. The seller is told it was released to them; the buyer is told it was released to the seller. Settlement can take a day, and either of them can leave. **Sync** stays. **Paid** still waits for `SETTLED`
-     - `PAID` → "Paid to Maya · 25 Sep" + `EscrowLegList`
+     - `PAID` → the seller reads "Paid to you · 25 Sep"; the buyer reads "Paid to Maya · 25 Sep". Then `EscrowLegList`
   5. `ActivityTimeline`
   6. `AirwallexActivityPanel` (collapsed by default; "Behind the scenes: Airwallex")
 - **Errors:** `404` → "Offer not found"; `403` → "You're not part of this offer".
