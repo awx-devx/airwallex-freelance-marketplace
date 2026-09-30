@@ -1,4 +1,5 @@
 import { PlatformOverviewSchema, WebhookEventRowSchema, type PlatformOverviewDTO, type WebhookEventRowDTO } from "@/contracts/platform";
+import { cardReleaseAccepted } from "@/contracts/permissions";
 import { currentBalances } from "@/lib/airwallex/wallet";
 import { getServerConfig } from "@/lib/config";
 import { connectDb } from "@/lib/db";
@@ -14,6 +15,25 @@ export type BalanceReader = (onBehalfOf?: string) => Promise<unknown>;
 
 function money(amountMinor: number, currency: string) {
   return { amountMinor, currency };
+}
+
+function releaseSettling(milestone: {
+  status: string;
+  lastError?: string;
+  escrow?: {
+    sellerSplit?: { status: string };
+    revenueSplit?: { status: string };
+  };
+}): boolean {
+  if (milestone.status !== "RELEASING" || milestone.lastError) return false;
+  const escrowLegs = [];
+  if (milestone.escrow?.sellerSplit) {
+    escrowLegs.push({ kind: "FUNDS_SPLIT", share: "SELLER", status: milestone.escrow.sellerSplit.status });
+  }
+  if (milestone.escrow?.revenueSplit) {
+    escrowLegs.push({ kind: "FUNDS_SPLIT", share: "REVENUE", status: milestone.escrow.revenueSplit.status });
+  }
+  return cardReleaseAccepted({ status: "RELEASING", escrowLegs });
 }
 
 /**
@@ -40,6 +60,7 @@ export async function platformOverview(reader: BalanceReader = currentBalances):
       milestoneCounts[milestone.status] = (milestoneCounts[milestone.status] ?? 0) + 1;
       if (milestone.status === "PAID") fees += milestone.breakdown.revenueMinor;
       if (milestone.status !== "RELEASING" && milestone.status !== "REFUNDING") continue;
+      if (releaseSettling(milestone)) continue;
       const since = milestone.status === "RELEASING" ? (milestone.approvedAt ?? offer.updatedAt) : offer.updatedAt;
       if (since.getTime() > cutoff) continue;
       stuck.push({

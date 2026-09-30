@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cardReleaseAccepted,
   milestoneActions,
   offerActions,
   offerIsPending,
@@ -98,6 +99,32 @@ describe("milestoneActions", () => {
         "BUYER",
       ),
     ).toEqual(["RETRY"]);
+  });
+
+  it("treats a card release as accepted once every funds split is released", () => {
+    const released = [
+      { kind: "FUNDS_SPLIT", share: "SELLER", status: "RELEASED" },
+      { kind: "FUNDS_SPLIT", share: "REVENUE", status: "RELEASED" },
+    ];
+    expect(cardReleaseAccepted({ status: "RELEASING", escrowLegs: released })).toBe(true);
+    expect(cardReleaseAccepted({ status: "RELEASING", escrowLegs: [{ kind: "FUNDS_SPLIT", share: "SELLER", status: "RELEASED" }] })).toBe(true);
+    expect(
+      cardReleaseAccepted({
+        status: "RELEASING",
+        escrowLegs: [
+          { kind: "FUNDS_SPLIT", share: "SELLER", status: "RELEASED" },
+          { kind: "FUNDS_SPLIT", share: "REVENUE", status: "CREATED" },
+        ],
+      }),
+    ).toBe(false);
+    expect(cardReleaseAccepted({ status: "RELEASING", escrowLegs: [] })).toBe(false);
+    expect(cardReleaseAccepted({ status: "PAID", escrowLegs: released })).toBe(false);
+    expect(
+      cardReleaseAccepted({
+        status: "RELEASING",
+        escrowLegs: [{ kind: "CA_TRANSFER", share: "SELLER", status: "PENDING" }],
+      }),
+    ).toBe(false);
   });
 
   it("holds delivery until the previous milestone is paid when sequential", () => {

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { OfferDTO } from "@/contracts/offers";
+import { cardReleaseAccepted } from "@/contracts/permissions";
 import { api } from "@/lib/api";
 import { qk, type OfferView } from "@/hooks/queryKeys";
 
@@ -128,14 +129,21 @@ export function usePayFromWallet(offerId: string) {
   return useMutation({ mutationFn: () => api.payments.payFromWallet(offerId), onSuccess: write });
 }
 
+function blocksOnAirwallex(offer: OfferDTO): boolean {
+  if (offer.status === "AWAITING_PAYMENT") return true;
+  return offer.milestones.some((milestone) => milestone.isPending && !cardReleaseAccepted(milestone));
+}
+
 export function useOfferSync(offerId: string, offer?: OfferDTO) {
   const qc = useQueryClient();
   const wasPending = useRef(false);
   const [timedOut, setTimedOut] = useState(false);
   const pending = Boolean(offer?.isPending);
+  const blocking = Boolean(offer && pending && blocksOnAirwallex(offer));
+  const settleInBackground = pending && !blocking;
 
   useEffect(() => {
-    if (!pending) return;
+    if (!blocking) return;
     const started = Date.now();
     const reset = window.setTimeout(() => setTimedOut(false), 0);
     const id = window.setInterval(() => {
@@ -145,7 +153,7 @@ export function useOfferSync(offerId: string, offer?: OfferDTO) {
       window.clearTimeout(reset);
       window.clearInterval(id);
     };
-  }, [pending]);
+  }, [blocking]);
 
   useQuery({
     queryKey: [...qk.offer(offerId), "sync"],
@@ -154,8 +162,8 @@ export function useOfferSync(offerId: string, offer?: OfferDTO) {
       qc.setQueryData(qk.offer(offerId), next);
       return next;
     },
-    enabled: pending && !timedOut,
-    refetchInterval: 3_000,
+    enabled: (blocking && !timedOut) || settleInBackground,
+    refetchInterval: blocking && !timedOut ? 3_000 : false,
   });
 
   useEffect(() => {

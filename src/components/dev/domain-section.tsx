@@ -209,15 +209,15 @@ export function DomainSection({ viewerRole }: { viewerRole: ViewerRole }) {
         {(["BUYER", "SELLER"] as const).flatMap((role) =>
           MILESTONE_STATUSES.map((status) => (
             <Variant key={`${role}-${status}`} caption={`MilestoneCard / ${status} / ${role}`} className="@min-[720px]:col-span-2">
-              <MilestoneCard milestone={milestoneFor(status, role)} payeeName={payeeName} />
+              <MilestoneCard milestone={milestoneFor(status, role)} payeeName={payeeName} viewerRole={role} />
             </Variant>
           )),
         )}
         <Variant caption="MilestoneCard / releasing stuck / retry" className="@min-[720px]:col-span-2">
-          <MilestoneCard milestone={milestoneFor("RELEASING", "BUYER", { lastError: "Timed out waiting for funds_split.settled" })} payeeName={payeeName} />
+          <MilestoneCard milestone={milestoneFor("RELEASING", "BUYER", { lastError: "Timed out waiting for funds_split.settled" })} payeeName={payeeName} viewerRole="BUYER" />
         </Variant>
         <Variant caption="MilestoneCard / still waiting" className="@min-[720px]:col-span-2">
-          <MilestoneCard milestone={milestoneFor("RELEASING", "BUYER")} payeeName={payeeName} timedOut />
+          <MilestoneCard milestone={milestoneFor("RELEASING", "BUYER")} payeeName={payeeName} viewerRole="BUYER" timedOut />
         </Variant>
       </KitSection>
 

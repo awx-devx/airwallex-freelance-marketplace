@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
-import type { MilestoneAction, MilestoneDTO } from "@/contracts/offers";
+import type { MilestoneAction, MilestoneDTO, ViewerRole } from "@/contracts/offers";
+import { cardReleaseAccepted } from "@/contracts/permissions";
 import { formatDay } from "@/components/domain/format";
 import { Money } from "@/components/domain/money";
+import { releasedAwaitingSettlement } from "@/components/domain/status";
 import { StatusPill } from "@/components/domain/status-pill";
 import { DeliveryForm } from "@/components/domain/delivery-form";
 import { DeliveryView } from "@/components/domain/delivery-view";
@@ -24,6 +26,7 @@ import { formatMoney } from "@/lib/money";
 export function MilestoneCard({
   milestone,
   payeeName,
+  viewerRole,
   timedOut = false,
   pendingAction,
   onAction,
@@ -31,6 +34,7 @@ export function MilestoneCard({
 }: {
   milestone: MilestoneDTO;
   payeeName: string;
+  viewerRole: ViewerRole;
   timedOut?: boolean;
   pendingAction?: MilestoneAction;
   onAction?: (action: MilestoneAction, payload?: { links?: string[]; note?: string; comment?: string; reason?: string }) => void;
@@ -42,6 +46,7 @@ export function MilestoneCard({
   const canReview = milestone.allowedActions.includes("APPROVE") || milestone.allowedActions.includes("REQUEST_CHANGES");
   const canCancel = milestone.allowedActions.includes("CANCEL");
   const canRetry = milestone.allowedActions.includes("RETRY");
+  const released = cardReleaseAccepted(milestone);
 
   return (
     <article className="flex min-w-0 flex-col gap-3 rounded-md border border-border bg-card p-5">
@@ -67,8 +72,20 @@ export function MilestoneCard({
           ) : null}
         </div>
       </div>
-      <StatusPill status={milestone.status} />
-      {milestone.isPending ? (
+      <StatusPill status={milestone.status} visual={released ? releasedAwaitingSettlement : undefined} />
+      {released ? (
+        <div className="flex flex-col items-start gap-3">
+          <p className="text-sm text-muted-foreground">
+            {viewerRole === "SELLER"
+              ? "Released to you. Airwallex settles this to your wallet later, often the next day. You can leave this page."
+              : `Released to ${payeeName}. Airwallex settles this to their wallet later, often the next day. You can leave this page.`}
+          </p>
+          <EscrowLegList legs={milestone.escrowLegs} />
+          <Button type="button" variant="outline" size="sm" onClick={() => onSync?.()}>
+            Sync
+          </Button>
+        </div>
+      ) : milestone.isPending ? (
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Spinner size="sm" />
           <span>{timedOut ? "Still waiting" : "Waiting for Airwallex…"}</span>

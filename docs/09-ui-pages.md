@@ -116,6 +116,8 @@ Type scale: `text-xs` 12 / `text-sm` 14 (default UI text, Inter) / `text-base` 1
 | `CANCELLED` / `DECLINED` / `WITHDRAWN` | Cancelled / Declined / Withdrawn | neutral, muted | `XCircle` |
 | `RELEASE_FAILED` / `REFUND_FAILED` | Release failed / Refund failed | danger | `AlertTriangle` |
 
+Once every card funds split on a `RELEASING` milestone is `RELEASED`, the pill is **Released** (info, `CheckCircle2`, no spinner) instead of Releasing…. **Paid** still waits for `SETTLED`.
+
 ## 3. UI kit inventory
 
 Every component below must appear on the **UI kit demo page** (§4) in all listed variants and states.
@@ -254,7 +256,8 @@ Each page is a thin `page.tsx` that renders a client **screen** component. Stand
      - `APPROVE` / `REQUEST_CHANGES` → latest `DeliveryView` + `ReviewActions`
      - `CANCEL` → overflow menu item → `ConfirmDialog` ("$X will be refunded to the buyer")
      - `RETRY` → button on failed/stuck milestones
-     - pending (`isPending`) → spinner + "Waiting for Airwallex…" + **Sync** (and "Still waiting" after timeout)
+     - pending, release not accepted yet → spinner + "Waiting for Airwallex…" + **Sync** (and "Still waiting" after the 60s poll)
+     - card splits already `RELEASED` → **Released**, no spinner. The seller is told it was released to them; the buyer is told it was released to the seller. Settlement can take a day, and either of them can leave. **Sync** stays. **Paid** still waits for `SETTLED`
      - `PAID` → "Paid to Maya · 25 Sep" + `EscrowLegList`
   5. `ActivityTimeline`
   6. `AirwallexActivityPanel` (collapsed by default; "Behind the scenes: Airwallex")

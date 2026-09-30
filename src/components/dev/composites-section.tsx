@@ -23,7 +23,7 @@ function OfferComposite({ offerId, userId, title }: { offerId: string; userId: s
         <OfferActionBar offer={offer} onAction={(action) => toast(`Would ${action.toLowerCase().replaceAll("_", " ")}`)} />
         <EscrowSummary totals={offer.totals} />
         {offer.milestones.map((milestone) => (
-          <MilestoneCard key={milestone.id} milestone={milestone} payeeName={offer.seller.name} />
+          <MilestoneCard key={milestone.id} milestone={milestone} payeeName={offer.seller.name} viewerRole={offer.viewerRole} />
         ))}
         <ActivityTimeline items={offer.id === "off_social" ? sampleActivity : []} />
         <AirwallexActivityPanel events={offer.id === "off_social" ? sampleEvents : []} />
@@ -40,6 +40,7 @@ function ReleaseSimulation() {
     <MilestoneCard
       milestone={milestone}
       payeeName={payeeName}
+      viewerRole="BUYER"
       pendingAction={approving ? "APPROVE" : undefined}
       onAction={(action) => {
         if (action !== "APPROVE") return;

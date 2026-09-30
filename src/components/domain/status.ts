@@ -49,3 +49,12 @@ const STATUS_VISUAL = {
 export function statusVisual(status: AnyStatus): StatusVisual {
   return STATUS_VISUAL[status];
 }
+
+/** Card splits are RELEASED. Settlement to the wallet is still outstanding. */
+export const releasedAwaitingSettlement: StatusVisual = {
+  label: "Released",
+  tone: "info",
+  icon: CheckCircle2,
+  spinner: false,
+  muted: false,
+};

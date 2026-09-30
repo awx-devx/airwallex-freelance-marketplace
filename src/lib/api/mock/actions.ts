@@ -277,6 +277,10 @@ function scheduleRelease(offer: MockOffer, milestone: MockMilestone) {
   milestone.status = "RELEASING";
   milestone.pendingSince = nowIso();
   milestone.lastError = undefined;
+  if ((offer.fundingRail ?? "CARD") === "CARD") {
+    const legs = milestone.escrowLegs.length > 0 ? milestone.escrowLegs : cardLegs(milestone);
+    milestone.escrowLegs = legs.map((leg) => (leg.kind === "FUNDS_SPLIT" ? { ...leg, status: "RELEASED" } : leg));
+  }
   eventApi(offer.id, "POST", `/api/v1/pa/funds_splits/${milestone.id}/release`, { status: "RELEASED" });
   scheduleMockJob(() => settleRelease(offer.id, milestone.id), SETTLE_MS);
 }

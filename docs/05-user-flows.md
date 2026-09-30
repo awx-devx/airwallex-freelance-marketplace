@@ -145,6 +145,8 @@ No Airwallex calls happen.
 3. If a release call errors, keep `RELEASING`, record `lastError`, and show "Release pending — retry" (retry is safe because request IDs are deterministic).
 4. Activity `MILESTONE_APPROVED`, `FUNDS_RELEASED`.
 
+Once a card release is `RELEASED`, the offer page stops the spinner. The seller reads that it was released to them; the buyer reads that it was released to the seller. Both say Airwallex settles the wallet later, often the next day, and that they can leave. The milestone stays `RELEASING` until `SETTLED`. Wallet transfers still show the spinner, because those settle in seconds. The page syncs once on open and when **Sync** is pressed. It polls every 3 seconds for about a minute only while a release or refund is still in flight.
+
 **Webhooks:** `funds_split.settled` (card) or `connected_account_transfer.settled` (wallet) updates the specific split/transfer. When both seller and revenue legs are settled, milestone → `PAID`, `paidAt`, activity `MILESTONE_PAID`. If every milestone is terminal, the offer → `COMPLETED`.
 
 ### Request changes
@@ -189,7 +191,7 @@ Milestone → `CHANGES_REQUESTED`, review comment saved. The seller sees the com
 - Platform account balances (`GET /balances/current`, no on-behalf header).
 - Revenue CA balances (on behalf of the Revenue account), which shows the fee split accumulating.
 - Recent webhooks (last 50) with name, object ID, processed status, and error.
-- Stuck items: milestones in `RELEASING`/`REFUNDING` for more than 2 minutes, with **Retry** and **Sync** buttons.
+- Stuck items: `REFUNDING`, or `RELEASING` before the card splits are `RELEASED` (no seller split, a split still `CREATED`, or `lastError`), for more than 2 minutes, with **Retry** and **Sync**. A card release that is already `RELEASED` is not stuck while settlement takes a day.
 
 ---
 

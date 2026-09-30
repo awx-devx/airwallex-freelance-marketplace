@@ -113,6 +113,7 @@ export function OfferScreen({ id }: { id: string }) {
             key={milestone.id}
             milestone={milestone}
             payeeName={offer.seller.name}
+            viewerRole={offer.viewerRole}
             timedOut={sync.timedOut && milestone.isPending}
             pendingAction={pendingMilestone(milestone.id)}
             onSync={() => sync.syncNow.mutate()}

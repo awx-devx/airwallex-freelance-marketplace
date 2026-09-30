@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
-import { statusVisual, type AnyStatus, type StatusTone } from "@/components/domain/status";
+import { statusVisual, type AnyStatus, type StatusTone, type StatusVisual } from "@/components/domain/status";
 import { cn } from "cn";
 
 const toneClass: Record<StatusTone, string> = {
@@ -12,8 +12,7 @@ const toneClass: Record<StatusTone, string> = {
   violet: "bg-primary/10 text-primary",
 };
 
-export function StatusPill({ status }: { status: AnyStatus }) {
-  const visual = statusVisual(status);
+export function StatusPill({ status, visual = statusVisual(status) }: { status: AnyStatus; visual?: StatusVisual }) {
   const Icon = visual.icon;
 
   return (

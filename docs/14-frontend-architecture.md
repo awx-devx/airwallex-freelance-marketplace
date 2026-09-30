@@ -164,13 +164,14 @@ export function useMilestoneAction(offerId: string) {
 
 ```ts
 export function useOfferSync(offerId: string, offer?: OfferDTO) {
-  // While offer.isPending: POST /sync every 3s, write the result into qk.offer(offerId).
-  // Stop after 60s (expose `timedOut` so the UI shows "Still waiting… Sync now").
+  // While a payment, release, or refund is still in flight: POST /sync every 3s.
+  // Stop that poll after 60s (expose `timedOut` so the UI shows "Still waiting… Sync now").
+  // A card milestone whose splits are already RELEASED syncs once on open, then only when Sync is pressed.
   // When pending → not pending: invalidate lists, activity, airwallex-events, wallet.
 }
 ```
 
-Implement with `useQuery({ queryKey: [...qk.offer(id), 'sync'], queryFn: () => api.offers.sync(id), enabled: !!offer?.isPending && !timedOut, refetchInterval: 3000 })` plus an effect that copies data into `qk.offer(id)`. The manual **Sync** button calls the same endpoint via `useMutation`.
+Implement with `useQuery` writing the result into `qk.offer(id)`. Fast `refetchInterval: 3000` applies only while something is still in flight. The manual **Sync** button calls the same endpoint via `useMutation`.
 
 ## 4. Mock transport (`src/lib/api/mock`) — UI-first development
 
@@ -192,7 +193,7 @@ Behaviour:
 - **Same DTOs and status codes** as the real API, validated against `src/contracts` in dev.
 - **Same rules:** uses `src/contracts/permissions.ts` for `allowedActions`, `src/services/fees.ts` for breakdowns, and the state machines in [04](./04-data-model.md). Invalid transitions return `409 INVALID_STATE`, just like the backend.
 - **Realistic latency:** 250–700ms random per call (configurable; `0` in tests).
-- **Simulated async money:** approve → `RELEASING`, and after ~2.5s `simulate.ts` flips it to `PAID` (adds fake `spt_mock_...` legs, activity rows, and `AirwallexEventDTO`s that mimic API calls plus webhooks). Cancel → `REFUNDING` → `REFUNDED`. Wallet payment → `AWAITING_PAYMENT` → `ACTIVE`. `POST /sync` just returns current state, which exercises `useOfferSync` for real.
+- **Simulated async money:** approve → `RELEASING`. A card release marks its funds-split legs `RELEASED` immediately (the calm Released state), then after ~2.5s `simulate.ts` flips the milestone to `PAID`. Wallet releases keep the spinner until that jump. Cancel → `REFUNDING` → `REFUNDED`. Wallet payment → `AWAITING_PAYMENT` → `ACTIVE`. `POST /sync` just returns current state, which exercises `useOfferSync` for real.
 - **Mock session:** `login`/`guest` store the current mock user ID in `localStorage`; `GET /api/me` returns it or a 401.
 - **Mock checkout:** in mock mode, the pay page renders `MockCardForm` (looks like the Drop-in) instead of `@airwallex/components-sdk`. Card `4035 5010 0000 0008` succeeds; `4012 0003 0000 1003` declines. On success it navigates to the real return page, which calls `reconcile`.
 - **Error injection:** `scenarios.ts` can make the next N calls to a route fail (for example `AIRWALLEX_ERROR` on approve) to build error states.
