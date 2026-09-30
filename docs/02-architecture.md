@@ -180,6 +180,7 @@ Airwallex requires a unique `request_id` (max 64 chars) on create calls. Derivin
 | Operation | `request_id` pattern |
 | --- | --- |
 | Create PaymentIntent for an offer (attempt N) | `pi:{offerId}:{attempt}` |
+| Cancel an unused PaymentIntent when paying from the wallet | `picancel:{paymentId}` |
 | Create seller split for a milestone | `fs:{milestoneId}:seller` |
 | Create revenue split for a milestone | `fs:{milestoneId}:rev` |
 | Release split | `fsr:{splitId}` |

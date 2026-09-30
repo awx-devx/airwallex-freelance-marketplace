@@ -17,6 +17,10 @@ export function paymentIntentRequestId(offerId: string, attempt: number): string
   return assertRequestId(`pi:${offerId}:${attempt}`);
 }
 
+export function paymentIntentCancelRequestId(paymentId: string): string {
+  return assertRequestId(`picancel:${paymentId}`);
+}
+
 export function sellerSplitRequestId(milestoneId: string): string {
   return assertRequestId(`fs:${milestoneId}:seller`);
 }

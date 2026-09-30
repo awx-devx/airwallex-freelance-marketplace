@@ -47,3 +47,14 @@ export async function createPaymentIntent(input: CreatePaymentIntentInput): Prom
 export async function retrievePaymentIntent(paymentIntentId: string): Promise<JsonObject> {
   return request<JsonObject>("GET", `/api/v1/pa/payment_intents/${paymentIntentId}`);
 }
+
+export async function cancelPaymentIntent(input: {
+  paymentIntentId: string;
+  requestId: string;
+  relatedOfferId?: string;
+}): Promise<JsonObject> {
+  return request<JsonObject>("POST", `/api/v1/pa/payment_intents/${input.paymentIntentId}/cancel`, {
+    relatedOfferId: input.relatedOfferId,
+    body: { request_id: input.requestId },
+  });
+}

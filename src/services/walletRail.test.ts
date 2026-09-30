@@ -11,9 +11,10 @@ import { Payment } from "@/models/payment";
 import { PlatformSettings } from "@/models/platformSettings";
 import { User, type UserDocument } from "@/models/user";
 import { WebhookEvent } from "@/models/webhookEvent";
+import type { JsonObject } from "@/lib/airwallex/json";
 import { InsufficientBalance, InvalidState } from "@/server/errors";
-import { approveMilestone, refundMilestone, type TransferGateway } from "@/services/escrow";
-import { payFromWallet, type WalletGateway } from "@/services/funding";
+import { approveMilestone, refundMilestone, type SplitGateway, type TransferGateway } from "@/services/escrow";
+import { payFromWallet, type CardGateway, type WalletGateway } from "@/services/funding";
 import { createAndSend, submitDelivery } from "@/services/offers";
 import { platformOverview } from "@/services/platform";
 import { dispatchWebhook } from "@/services/webhookHandlers";
@@ -108,6 +109,56 @@ function transfers(status = "PENDING"): TransferGateway & { calls: Array<{ amoun
   };
 }
 
+function cardCheckout(status: string): CardGateway & { cancelled: string[] } {
+  const cancelled: string[] = [];
+  return {
+    cancelled,
+    async createPaymentIntent() {
+      return { id: "int_new", client_secret: "cs_new", status: "REQUIRES_PAYMENT_METHOD" };
+    },
+    async retrievePaymentIntent(id: string) {
+      return { id, status };
+    },
+    async cancelPaymentIntent(id: string) {
+      cancelled.push(id);
+      return { id, status: "CANCELLED" };
+    },
+  };
+}
+
+function holdingSplits(): SplitGateway {
+  let next = 0;
+  return {
+    async createFundsSplit() {
+      next += 1;
+      return { id: `spt_${next}`, status: "CREATED" } satisfies JsonObject;
+    },
+    async retrieveFundsSplit(id: string) {
+      return { id, status: "CREATED" };
+    },
+  };
+}
+
+async function withPendingCard(offerId: string) {
+  const offer = await Offer.findById(offerId);
+  if (!offer) throw new Error("Offer missing.");
+  const payment = await Payment.create({
+    offerId: offer._id,
+    attempt: 1,
+    rail: "CARD",
+    amountMinor: offer.totalMinor,
+    currency: offer.currency,
+    paymentIntentId: "int_pending",
+    clientSecret: "cs_pending",
+    status: "PENDING",
+    refundedMinor: 0,
+  });
+  await Offer.updateOne(
+    { _id: offer._id },
+    { $set: { status: "AWAITING_PAYMENT", fundingRail: "CARD", paymentId: payment._id } },
+  );
+}
+
 describe("wallet funding", () => {
   it("refuses a wallet payment when the balance is too low", async () => {
     const { buyer, offer } = await sentOffer();
@@ -138,6 +189,40 @@ describe("wallet funding", () => {
     expect(funded?.milestones.every((milestone) => !milestone.escrow?.sellerSplit && !milestone.escrow?.revenueSplit)).toBe(true);
     const notes = await Activity.find({ offerId: offer.id, type: "PAYMENT_SUCCEEDED" });
     expect(notes.map((note) => note.message)).toContain("Payment received from wallet");
+  });
+
+  it("cancels an unused card checkout when the wallet can pay", async () => {
+    const { buyer, offer } = await sentOffer();
+    await withPendingCard(offer.id);
+    const cards = cardCheckout("REQUIRES_PAYMENT_METHOD");
+    const gateway = wallet(500, "PENDING");
+    const waiting = await payFromWallet(buyer, offer.id, gateway, cards);
+    expect(cards.cancelled).toEqual(["int_pending"]);
+    expect(gateway.created).toBe(1);
+    expect(waiting.fundingRail).toBe("WALLET");
+    expect(await Payment.findOne({ paymentIntentId: "int_pending" })).toMatchObject({ status: "CANCELLED" });
+  });
+
+  it("keeps the card checkout when the wallet balance is too low", async () => {
+    const { buyer, offer } = await sentOffer();
+    await withPendingCard(offer.id);
+    const cards = cardCheckout("REQUIRES_PAYMENT_METHOD");
+    await expect(payFromWallet(buyer, offer.id, wallet(1), cards)).rejects.toBeInstanceOf(InsufficientBalance);
+    expect(cards.cancelled).toEqual([]);
+    expect(await Payment.findOne({ paymentIntentId: "int_pending" })).toMatchObject({ status: "PENDING" });
+  });
+
+  it("finishes a card payment that already succeeded instead of charging the wallet", async () => {
+    const { buyer, offer } = await sentOffer();
+    await withPendingCard(offer.id);
+    const cards = cardCheckout("SUCCEEDED");
+    const gateway = wallet(500, "SETTLED");
+    const funded = await payFromWallet(buyer, offer.id, gateway, cards, holdingSplits());
+    expect(gateway.created).toBe(0);
+    expect(cards.cancelled).toEqual([]);
+    expect(funded.status).toBe("ACTIVE");
+    expect(funded.fundingRail).toBe("CARD");
+    expect(await Payment.findOne({ paymentIntentId: "int_pending" })).toMatchObject({ status: "SUCCEEDED" });
   });
 
   it("leaves the offer sent when the charge fails", async () => {

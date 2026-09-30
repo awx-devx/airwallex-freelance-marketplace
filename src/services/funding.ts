@@ -3,8 +3,8 @@ import type { CardPaymentSessionDTO } from "@/contracts/payments";
 import { CardPaymentSessionSchema } from "@/contracts/payments";
 import { offerActions } from "@/contracts/permissions";
 import { readString, type JsonObject } from "@/lib/airwallex/json";
-import { createPaymentIntent, retrievePaymentIntent, type CreatePaymentIntentInput } from "@/lib/airwallex/payments";
-import { chargeRequestId, paymentIntentRequestId } from "@/lib/airwallex/requestIds";
+import { cancelPaymentIntent, createPaymentIntent, retrievePaymentIntent, type CreatePaymentIntentInput } from "@/lib/airwallex/payments";
+import { chargeRequestId, paymentIntentCancelRequestId, paymentIntentRequestId } from "@/lib/airwallex/requestIds";
 import { createCharge, currentBalances, retrieveCharge } from "@/lib/airwallex/wallet";
 import { getServerConfig } from "@/lib/config";
 import { connectDb } from "@/lib/db";
@@ -23,9 +23,15 @@ const PAYABLE = new Set(["REQUIRES_PAYMENT_METHOD", "REQUIRES_CUSTOMER_ACTION", 
 export type CardGateway = {
   createPaymentIntent: (input: CreatePaymentIntentInput) => Promise<JsonObject>;
   retrievePaymentIntent: (paymentIntentId: string) => Promise<JsonObject>;
+  cancelPaymentIntent: (paymentIntentId: string, requestId: string, relatedOfferId?: string) => Promise<JsonObject>;
 };
 
-const liveCards: CardGateway = { createPaymentIntent, retrievePaymentIntent };
+const liveCards: CardGateway = {
+  createPaymentIntent,
+  retrievePaymentIntent,
+  cancelPaymentIntent: (paymentIntentId, requestId, relatedOfferId) =>
+    cancelPaymentIntent({ paymentIntentId, requestId, relatedOfferId }),
+};
 
 export type WalletGateway = {
   currentBalances: typeof currentBalances;
@@ -206,14 +212,49 @@ async function applyCardStatus(offer: OfferDocument, gateway: CardGateway, split
   }
 }
 
-export async function payFromWallet(user: UserDocument, offerId: string, gateway: WalletGateway = liveWallet) {
+async function pendingCardIntent(offer: OfferDocument, cards: CardGateway, splits?: SplitGateway): Promise<"none" | "funded" | "payable"> {
+  const pendingCard = await Payment.findOne({ offerId: offer._id, rail: "CARD", status: "PENDING" }).sort({ attempt: -1 });
+  if (!pendingCard?.paymentIntentId) return "none";
+  const retrieved = await cards.retrievePaymentIntent(pendingCard.paymentIntentId);
+  const status = readString(retrieved, "status") ?? "";
+  if (status === "SUCCEEDED") {
+    await onFundingSucceeded(offer._id.toString(), splits);
+    return "funded";
+  }
+  if (status === "FAILED" || status === "CANCELLED") {
+    await markCardPaymentFailed(pendingCard.paymentIntentId, status);
+    return "none";
+  }
+  if (PAYABLE.has(status) || status === "") return "payable";
+  await markCardPaymentFailed(pendingCard.paymentIntentId, "FAILED");
+  return "none";
+}
+
+async function cancelPayableCard(offer: OfferDocument, cards: CardGateway): Promise<void> {
+  const pendingCard = await Payment.findOne({ offerId: offer._id, rail: "CARD", status: "PENDING" }).sort({ attempt: -1 });
+  if (!pendingCard?.paymentIntentId) return;
+  await cards.cancelPaymentIntent(
+    pendingCard.paymentIntentId,
+    paymentIntentCancelRequestId(pendingCard._id.toString()),
+    offer._id.toString(),
+  );
+  await Payment.updateOne({ _id: pendingCard._id, status: "PENDING" }, { $set: { status: "CANCELLED" } });
+}
+
+export async function payFromWallet(
+  user: UserDocument,
+  offerId: string,
+  gateway: WalletGateway = liveWallet,
+  cards: CardGateway = liveCards,
+  splits?: SplitGateway,
+) {
   if (!getServerConfig().walletRailEnabled) throw new InvalidState("Wallet payments aren't available.");
   const offer = await loadOffer(offerId, user._id.toString());
   if (!isBuyer(offer, user._id.toString()) || !offerActions(offer, "BUYER").some((action) => action === "ACCEPT_AND_PAY" || action === "CONTINUE_PAYMENT")) {
     throw new InvalidState("That action isn't available.");
   }
-  const pendingCard = await Payment.findOne({ offerId: offer._id, rail: "CARD", status: "PENDING" });
-  if (pendingCard) throw new InvalidState("Cancel the card payment before paying from the wallet.");
+  const cardState = await pendingCardIntent(offer, cards, splits);
+  if (cardState === "funded") return getOffer(user, offerId);
   const accountId = user.airwallex.accountId;
   if (!accountId) throw new InvalidState("Your Airwallex account isn't ready.");
 
@@ -240,6 +281,7 @@ export async function payFromWallet(user: UserDocument, offerId: string, gateway
   const balances = mapBalances(await gateway.currentBalances(accountId), offer.currency);
   const available = balances[0]?.available.amountMinor ?? 0;
   if (available < offer.totalMinor) throw new InsufficientBalance("Wallet balance is too low.");
+  if (cardState === "payable") await cancelPayableCard(offer, cards);
 
   // AIRWALLEX: charge reason is an enum, not free text. The human label goes in reference.
   // https://www.airwallex.com/docs/api/scale/charges/create

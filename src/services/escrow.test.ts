@@ -63,6 +63,9 @@ function cards(status = "SUCCEEDED"): CardGateway {
     async retrievePaymentIntent(id: string) {
       return { id, status } satisfies JsonObject;
     },
+    async cancelPaymentIntent(id: string) {
+      return { id, status: "CANCELLED" } satisfies JsonObject;
+    },
   };
 }
 

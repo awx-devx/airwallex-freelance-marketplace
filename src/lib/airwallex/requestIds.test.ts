@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   chargeRequestId,
+  paymentIntentCancelRequestId,
   paymentIntentRequestId,
   refundRequestId,
   releaseSplitRequestId,
@@ -25,6 +26,8 @@ const splitId = "spt_hkpd1k27vg1xc7u";
 describe("request ids", () => {
   it("matches the documented patterns and stays within the API limit", () => {
     expect(paymentIntentRequestId(offerId, 1)).toBe(`pi:${offerId}:1`);
+    expect(paymentIntentCancelRequestId(offerId)).toBe(`picancel:${offerId}`);
+    expect(paymentIntentCancelRequestId(offerId).length).toBeLessThanOrEqual(64);
     expect(sellerSplitRequestId(milestoneId)).toBe(`fs:${milestoneId}:seller`);
     expect(revenueSplitRequestId(milestoneId)).toBe(`fs:${milestoneId}:rev`);
     expect(releaseSplitRequestId(splitId)).toBe(`fsr:${splitId}`);

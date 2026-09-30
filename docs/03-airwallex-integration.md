@@ -253,6 +253,7 @@ All paths are relative to `https://api.sandbox.airwallex.com`. All calls use `Au
 | Retrieve account | `GET /api/v1/accounts/{id}` | – | provisioning, sync |
 | Create PaymentIntent | `POST /api/v1/pa/payment_intents/create` | – (omit `connected_account_id` on this sandbox) | card funding |
 | Retrieve PaymentIntent | `GET /api/v1/pa/payment_intents/{id}` | – | return page, sync |
+| Cancel PaymentIntent | `POST /api/v1/pa/payment_intents/{id}/cancel` | – | wallet pay replaces an unused card checkout |
 | Create Funds Split | `POST /api/v1/pa/funds_splits/create` | – | escrow |
 | Release Funds Split | `POST /api/v1/pa/funds_splits/{id}/release` | – | approve |
 | Retrieve Funds Split | `GET /api/v1/pa/funds_splits/{id}` | – | sync |

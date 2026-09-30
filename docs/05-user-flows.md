@@ -111,7 +111,7 @@ If the payment fails (`payment_intent.payment_failed` or a Drop-in `error`), the
 
 ### Wallet rail
 
-1. `funding.payFromWallet(offerId)`: guard as above; check the buyer CA `available_amount`; `POST /charges/create` with `source = buyerCA`, `request_id = ch:{offerId}`, `reference = Escrow funding {shortRef}`. `reason` is the enum `professional_business_services` (the API rejects free text).
+1. `funding.payFromWallet(offerId)`: guard as above; check the buyer CA `available_amount`. Switching to the wallet tab does not cancel the card PaymentIntent, and coming back reuses it. Clicking **Pay from wallet** cancels that unused intent (`POST /pa/payment_intents/{id}/cancel`, request id `picancel:{paymentId}`) only once the balance is enough, then `POST /charges/create` with `source = buyerCA`, `request_id = ch:{offerId}`, `reference = Escrow funding {shortRef}`. `reason` is the enum `professional_business_services` (the API rejects free text). If the card intent has already succeeded, the card funding path finishes and the wallet is not charged. A low balance leaves the card intent in place.
 2. Offer → `AWAITING_PAYMENT`. The UI shows "Processing…" and polls `/api/offers/[id]/sync`.
 3. Webhook `charge.settled` (or sync retrieving the charge) calls `escrow.onFundingSucceeded(offerId)`. For the wallet rail, this just marks milestones `FUNDED`. Escrow is the platform balance; no splits are created.
 

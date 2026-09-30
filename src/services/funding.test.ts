@@ -74,6 +74,9 @@ function cards(status = "REQUIRES_PAYMENT_METHOD"): CardGateway & { created: num
     async retrievePaymentIntent(id: string) {
       return { id, status } satisfies JsonObject;
     },
+    async cancelPaymentIntent(id: string) {
+      return { id, status: "CANCELLED" } satisfies JsonObject;
+    },
   };
   return gateway;
 }
