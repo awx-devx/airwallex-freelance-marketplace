@@ -35,11 +35,11 @@ function MilestoneFields({
           <div key={field.id} className={detailed ? "flex flex-col gap-2 rounded-md border border-border p-3" : "grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8rem_auto]"}>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8rem_auto]">
               <div>
-                <Input aria-label={`Milestone ${index + 1} title`} aria-invalid={Boolean(titleError)} {...register(`milestones.${index}.title`)} />
+                <Input placeholder="Milestone title" aria-label={`Milestone ${index + 1} title`} aria-invalid={Boolean(titleError)} {...register(`milestones.${index}.title`)} />
                 {titleError ? <p className="mt-1 text-xs text-danger">{titleError}</p> : null}
               </div>
               <div>
-                <Input aria-label={`Milestone ${index + 1} amount`} aria-invalid={Boolean(amountError)} {...register(`milestones.${index}.amount`)} />
+                <Input placeholder="450.00" aria-label={`Milestone ${index + 1} amount`} aria-invalid={Boolean(amountError)} {...register(`milestones.${index}.amount`)} />
                 {amountError ? <p className="mt-1 text-xs text-danger">{amountError}</p> : null}
               </div>
               <Button type="button" variant="ghost" size="sm" disabled={fields.fields.length === 1} onClick={() => fields.remove(index)}>
@@ -49,11 +49,14 @@ function MilestoneFields({
             {detailed ? (
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_10rem]">
                 <div>
-                  <Textarea aria-label={`Milestone ${index + 1} description`} aria-invalid={Boolean(descriptionError)} {...register(`milestones.${index}.description`)} />
+                  <Textarea placeholder="What you'll deliver" aria-label={`Milestone ${index + 1} description`} aria-invalid={Boolean(descriptionError)} {...register(`milestones.${index}.description`)} />
                   {descriptionError ? <p className="mt-1 text-xs text-danger">{descriptionError}</p> : null}
                 </div>
                 <div>
-                  <Input type="date" aria-label={`Milestone ${index + 1} due date`} aria-invalid={Boolean(dueError)} {...register(`milestones.${index}.dueDate`)} />
+                  <label className="mb-1 block text-xs text-muted-foreground" htmlFor={`milestone-${index}-due`}>
+                    Due date
+                  </label>
+                  <Input id={`milestone-${index}-due`} type="date" aria-label={`Milestone ${index + 1} due date`} aria-invalid={Boolean(dueError)} {...register(`milestones.${index}.dueDate`)} />
                   {dueError ? <p className="mt-1 text-xs text-danger">{dueError}</p> : null}
                 </div>
               </div>
