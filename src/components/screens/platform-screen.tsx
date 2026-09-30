@@ -14,7 +14,7 @@ import { useMilestoneAction, useOfferSync } from "@/hooks/offers";
 import { usePlatformOverview, usePlatformWebhooks } from "@/hooks/platform";
 import { ApiError } from "@/lib/api/errors";
 
-// DEMO-ONLY: Any signed-in user can see platform balances and retry stuck milestones.
+// DEMO-ONLY: After the demo admin cookie is set, this screen shows platform balances and can retry stuck milestones.
 // PROD: Admin role checks and an audit log.
 function StuckRow({ item }: { item: PlatformOverviewDTO["stuck"][number] }) {
   const actions = useMilestoneAction(item.offerId);

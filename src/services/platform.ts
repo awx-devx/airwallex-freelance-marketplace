@@ -37,7 +37,7 @@ function releaseSettling(milestone: {
 }
 
 /**
- * DEMO-ONLY: Any signed-in user can read platform balances, fee totals, and webhook rows.
+ * DEMO-ONLY: Signed-in users can read this once they pass `DEMO_ADMIN_KEY` (open to everyone when that key is unset).
  * PROD: Restrict this to an admin role and write an audit log for each view.
  */
 export async function platformOverview(reader: BalanceReader = currentBalances): Promise<PlatformOverviewDTO> {

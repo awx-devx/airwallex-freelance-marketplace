@@ -44,7 +44,7 @@ src/lib/api/
 ├── milestones.ts     # submitDelivery, requestChanges, approve, cancel, retry
 ├── payments.ts       # startCard, reconcile, cancel, payFromWallet
 ├── wallet.ts         # get, transactions, withdraw, send
-├── platform.ts       # overview, webhooks
+├── platform.ts       # overview, webhooks, unlock
 └── mock/             # see §4
 ```
 
@@ -135,6 +135,7 @@ export const qk = {
 | `useOfferSync(offerId)` | `api.offers.sync` | Auto-polling, see below. |
 | `useWallet()`, `useWalletTransactions()` | | `useInfiniteQuery` for transactions (cursor). |
 | `usePlatformOverview()`, `usePlatformWebhooks()` | | `refetchInterval: 5000` on `/platform`. |
+| `useUnlockPlatform()` | `api.platform.unlock` | Sets the demo admin cookie, then `router.refresh()` so the gate re-renders as `PlatformScreen`. |
 
 ### Mutation pattern
 

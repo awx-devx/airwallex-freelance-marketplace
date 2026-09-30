@@ -186,7 +186,7 @@ Milestone → `CHANGES_REQUESTED`, review comment saved. The seller sees the com
 
 ## F11. Platform page (demo-only)
 
-**UI:** `/platform` (optionally gated by `DEMO_ADMIN_KEY`)
+**UI:** `/platform`. When `DEMO_ADMIN_KEY` is set, the page and its APIs stay locked until that key is entered (an httpOnly cookie). Leave the key unset to keep the page open to any signed-in user. Mock mode (`NEXT_PUBLIC_API_MOCKS=true`) skips the lock because the screen shows fixture balances.
 
 - Platform account balances (`GET /balances/current`, no on-behalf header).
 - Revenue CA balances (on behalf of the Revenue account), which shows the fee split accumulating.

@@ -366,10 +366,13 @@ type CreateOfferInput = {
 
 ### Platform (demo-only)
 
-| Method | Path | → |
-| --- | --- | --- |
-| GET | `/api/platform/overview` | `PlatformOverviewDTO` |
-| GET | `/api/platform/webhooks` | `WebhookEventRowDTO[]` (latest 50) |
+| Method | Path | Body | → |
+| --- | --- | --- | --- |
+| GET | `/api/platform/overview` | – | `PlatformOverviewDTO` |
+| GET | `/api/platform/webhooks` | – | `WebhookEventRowDTO[]` (latest 50) |
+| POST | `/api/platform/unlock` | `{ key: string }` | `{ ok: true }` |
+
+When `DEMO_ADMIN_KEY` is set, the two GETs return `403 FORBIDDEN` until `POST /api/platform/unlock` sets the `demo_admin` cookie. A wrong key is the same `403`. When the env var is empty, the GETs stay open to any signed-in user and unlock is a no-op.
 
 ### Webhook (not called by the UI)
 

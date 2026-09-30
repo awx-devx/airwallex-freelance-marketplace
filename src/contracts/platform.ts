@@ -36,3 +36,8 @@ export const WebhookEventRowSchema = z.object({
   processingError: z.string().optional(),
 });
 export type WebhookEventRowDTO = z.infer<typeof WebhookEventRowSchema>;
+
+export const DemoAdminUnlockSchema = z.object({
+  key: z.string().min(1, "Enter the admin key."),
+});
+export type DemoAdminUnlockInput = z.infer<typeof DemoAdminUnlockSchema>;

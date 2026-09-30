@@ -66,7 +66,7 @@ rg -n "SANDBOX:" src scripts
 | **Webhook processing** | Processed inline in the request; always returns 200 | Ack fast, enqueue, process async with retries; alert on failures |
 | **Webhook test signatures** | Accepts `client-secret-key` header for web-app test events (non-prod only), including `src/app/api/webhooks/airwallex/route.ts` and `scripts/spike/08-webhooks.ts` | Never |
 | **Sync endpoint** | Any participant can force-sync from Airwallex; UI polls it | Keep as an internal reconciliation job, not user-triggered |
-| **`/platform` page** | Visible to any logged-in user (`src/components/screens/platform-screen.tsx`, `src/services/platform.ts`, `GET /api/platform/overview`, `GET /api/platform/webhooks`; optional `DEMO_ADMIN_KEY`) | Proper admin RBAC and audit logs |
+| **`/platform` page** | Open to any logged-in user when `DEMO_ADMIN_KEY` is unset. When it is set, the page and `GET /api/platform/overview` / `webhooks` require that key via `POST /api/platform/unlock` (`src/lib/demoAdmin.ts`, `src/components/screens/platform-gate.tsx`). Mock mode skips the lock. | Proper admin RBAC and audit logs |
 | **Token cache** | In-memory per server instance (`src/lib/airwallex/client.ts`) | Shared cache with a single-flight refresh; respect login rate limits |
 | **`client_secret` persistence** | Stored on `payments` to re-render checkout (`src/models/payment.ts`) | Don't persist; re-fetch PI or create a new one |
 | **Logs** | Full request/response bodies (redacted) stored in Mongo and **shown to users** in the activity panel | Structured logs in an observability stack; never show raw API payloads to end users |

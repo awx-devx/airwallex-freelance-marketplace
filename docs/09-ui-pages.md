@@ -281,8 +281,9 @@ Each page is a thin `page.tsx` that renders a client **screen** component. Stand
 - **UI:** `AccountCard`, `BalanceTable`, escrow summary (held as buyer / incoming as seller), `TransactionList` with **Load more**. Withdraw and Send dialogs. Send stays disabled, with "Choose who to send to.", until a recipient is picked.
 
 ### `/platform` — `PlatformScreen` (demo-only)
+- **Gate:** when `DEMO_ADMIN_KEY` is set, `PlatformGate` asks for that key before the screen renders. A correct key sets an httpOnly cookie for 12 hours. Leave the key unset to skip the gate. Mock mode skips it too.
 - **Data:** `usePlatformOverview()`, `usePlatformWebhooks()` (both poll every 5s)
-- **Mutations:** `useMilestoneAction(offerId).retry`, sync
+- **Mutations:** `useMilestoneAction(offerId).retry`, sync, `useUnlockPlatform()`
 - **UI:** platform vs Revenue account balances side by side, fees collected, stuck items table (Retry/Sync), recent webhooks table.
 
 ## 6. Copy guidelines

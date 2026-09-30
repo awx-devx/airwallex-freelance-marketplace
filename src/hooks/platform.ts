@@ -1,8 +1,17 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { qk } from "@/hooks/queryKeys";
+
+export function useUnlockPlatform() {
+  const router = useRouter();
+  return useMutation({
+    mutationFn: api.platform.unlock,
+    onSuccess: () => router.refresh(),
+  });
+}
 
 export function usePlatformOverview() {
   return useQuery({

@@ -40,6 +40,7 @@ const routes: Route[] = [
   { method: "POST", pattern: "/api/wallet/sends", handler: ({ body }) => actions.sendFunds(body) },
   { method: "GET", pattern: "/api/platform/overview", handler: () => actions.platformOverview() },
   { method: "GET", pattern: "/api/platform/webhooks", handler: () => actions.platformWebhooks() },
+  { method: "POST", pattern: "/api/platform/unlock", handler: () => ({ ok: true as const }) },
 ];
 
 const match = createRouter(routes);
