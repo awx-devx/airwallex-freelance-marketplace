@@ -98,12 +98,12 @@ Log the first real payload of each event type during the spike and adjust the no
 
 | Event | Lookup | Action |
 | --- | --- | --- |
-| `payment_intent.succeeded` | `payments.paymentIntentId = obj.id` (fallback: `obj.metadata.offerId`) | `escrow.onFundingSucceeded(offerId)` |
+| `payment_intent.succeeded` | `payments.paymentIntentId = obj.id` (fallback: `obj.metadata.offerId`) | `release.onFundingSucceeded(offerId)` |
 | `payment_intent.payment_failed` / `.cancelled` | same | payment `FAILED`/`CANCELLED`; offer → `SENT` if still `AWAITING_PAYMENT` |
-| `funds_split.created` / `.released` / `.settled` / `.failed` | `milestones.escrow.{seller,revenue}Split.splitId = obj.id` | Update split status; `escrow.maybeMarkPaid(offerId, milestoneId)` on settled; `RELEASE_FAILED` on failed |
-| `refund.*` | `milestones.escrow.refund.refundId = obj.id` (fallback: `obj.metadata.milestoneId`) | Update refund status; `REFUNDED` on accepted/settled; `REFUND_FAILED` on failed |
+| `funds_split.created` / `.released` / `.settled` / `.failed` | `milestones.release.{seller,revenue}Split.splitId = obj.id` | Update split status; `release.maybeMarkPaid(offerId, milestoneId)` on settled; `RELEASE_FAILED` on failed |
+| `refund.*` | `milestones.release.refund.refundId = obj.id` (fallback: `obj.metadata.milestoneId`) | Update refund status; `REFUNDED` on accepted/settled; `REFUND_FAILED` on failed |
 | `charge.settled` / `.failed` / `.suspended` | `payments.chargeId = obj.id` | Wallet funding success/failure |
-| `connected_account_transfer.*` | Welcome credit (`request_id` prefix `welcome:`), or milestone `escrow.*Transfer.transferId` | Update transfer; `maybeMarkPaid` / `REFUNDED` |
+| `connected_account_transfer.*` | Welcome credit (`request_id` prefix `welcome:`), or milestone `release.*Transfer.transferId` | Update transfer; `maybeMarkPaid` / `REFUNDED` |
 | `account.*` | `users.airwallex.accountId` | Update `accountStatus` |
 | anything else | – | Store only |
 
@@ -112,7 +112,7 @@ All handlers are **idempotent** and **monotonic**: they never move a status back
 ## Ordering and races
 
 - Webhooks can arrive **out of order** and **more than once**. Status rank plus idempotency handle both.
-- The **return page / sync** and the **webhook** may process the same PI success concurrently. `escrow.onFundingSucceeded` claims the transition with a conditional update (`payments.status: PENDING → SUCCEEDED`). Only the winner creates splits. Deterministic `request_id`s make even a double split-create safe (`duplicate_request` → retrieve existing).
+- The **return page / sync** and the **webhook** may process the same PI success concurrently. `release.onFundingSucceeded` claims the transition with a conditional update (`payments.status: PENDING → SUCCEEDED`). Only the winner creates splits. Deterministic `request_id`s make even a double split-create safe (`duplicate_request` → retrieve existing).
 - Split IDs are only known after `funds_splits/create` returns. A `funds_split.created` webhook may arrive before we've saved the ID. The handler falls back to `obj.metadata.milestoneId` / `obj.metadata.share` to find the right milestone.
 
 ## Local development

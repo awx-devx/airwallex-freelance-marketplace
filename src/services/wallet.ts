@@ -57,7 +57,7 @@ export async function walletFor(user: UserDocument): Promise<WalletDTO> {
       label: "Airwallex connected account (sandbox)",
     },
     balances: mapBalances(rawBalances, currency),
-    escrow: {
+    unreleased: {
       heldAsBuyer: { amountMinor: held("buyer"), currency },
       incomingAsSeller: { amountMinor: held("seller"), currency },
     },

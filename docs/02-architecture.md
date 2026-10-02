@@ -33,7 +33,7 @@ flowchart TB
   subgraph "Next.js server"
     RH[REST route handlers\n/api/*]
     WH[/api/webhooks/airwallex/]
-    SVC[Domain services\nescrow, offers, provisioning, fees]
+    SVC[Domain services\nrelease, offers, provisioning, fees]
     AWX[Airwallex client\nauth token cache, request_id, logging]
   end
 
@@ -122,7 +122,7 @@ Principles:
 │   │   ├── provisioning.ts       # user -> connected account -> welcome credit -> welcome offer
 │   │   ├── offers.ts             # create/send/decline/withdraw
 │   │   ├── funding.ts            # card rail + wallet rail funding
-│   │   ├── escrow.ts             # create held splits, release, reverse/refund
+│   │   ├── release.ts             # create held splits, release, reverse/refund
 │   │   ├── fees.ts               # fee breakdown math (pure, unit-tested)
 │   │   └── webhookHandlers.ts    # event name -> handler
 │   └── proxy.ts                  # real mode: redirect to /login without a session cookie (Next.js 16; was middleware)
@@ -136,7 +136,7 @@ Principles:
 | Variable | Example | Purpose |
 | --- | --- | --- |
 | `APP_URL` | `http://localhost:3000` | Used for return URLs. |
-| `MONGODB_URI` | `mongodb://localhost:27017/awx-escrow` | Database. |
+| `MONGODB_URI` | `mongodb://localhost:27017/awx-marketplace` | Database. |
 | `SESSION_SECRET` | 32+ random chars | Signs the session JWT. |
 | `AIRWALLEX_API_BASE` | `https://api.sandbox.airwallex.com` | Sandbox base URL. Production is `https://api.airwallex.com`. |
 | `AIRWALLEX_CLIENT_ID` | from sandbox web app | `x-client-id` header for login. |
@@ -171,7 +171,7 @@ Responsibilities:
    - Injects `request_id` into POST bodies when not provided. **Prefer deterministic request IDs** (see below).
    - Optionally pins the API version via the `x-api-version` header. Verify the header name and pick the current version in the spike; see [13-open-questions-and-risks.md](./13-open-questions-and-risks.md).
 3. **Logging.** Writes an `airwallex_logs` document per call: method, path, on-behalf-of, request body (redacted), status, response body (trimmed), duration, and related `offerId`/`milestoneId`. Powers the activity panel.
-4. **Errors.** Throws a typed `AirwallexError { status, code, message, traceId }`. Treat `duplicate_request` as "already done": retrieve the existing object instead of failing.
+4. **Errors.** Throws a typed `AirwallexError { status, code, message, traceId }`. Treat `duplicate_request` as "already done": retrieve the existing object instead of failing. A connected-account transfer that replies `invalid_argument` with "request_id … has been used in the past" is the same case.
 
 ### Deterministic `request_id`s (idempotency)
 

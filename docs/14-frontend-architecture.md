@@ -157,7 +157,7 @@ export function useMilestoneAction(offerId: string) {
 }
 ```
 
-- **No optimistic updates for money actions** (pay, approve, cancel/refund, retry). The server response already carries the honest intermediate state (`RELEASING`, `REFUNDING`), and faking success would contradict the escrow story.
+- **No optimistic updates for money actions** (pay, approve, cancel/refund, retry). The server response already carries the honest intermediate state (`RELEASING`, `REFUNDING`), and faking success would contradict the milestone state.
 - Optimistic updates are allowed for non-money actions if they feel slow (for example request changes), but they aren't needed initially.
 - When a money action settles (a milestone becomes `PAID` or `REFUNDED`), also invalidate `qk.wallet`.
 

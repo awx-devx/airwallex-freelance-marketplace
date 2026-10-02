@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import type { MilestoneDTO, ViewerRole } from "@/contracts/offers";
 import { ActivityTimeline } from "@/components/domain/activity-timeline";
 import { AirwallexActivityPanel } from "@/components/domain/airwallex-activity-panel";
-import { EscrowSummary } from "@/components/domain/escrow-summary";
+import { ReleaseSummary } from "@/components/domain/release-summary";
 import { MilestoneCard } from "@/components/domain/milestone-card";
 import { OfferActionBar } from "@/components/domain/offer-action-bar";
 import { OfferHeader } from "@/components/domain/offer-header";
@@ -21,7 +21,7 @@ function OfferComposite({ offerId, userId, title }: { offerId: string; userId: s
       <div className="flex flex-col gap-5">
         <OfferHeader offer={offer} />
         <OfferActionBar offer={offer} onAction={(action) => toast(`Would ${action.toLowerCase().replaceAll("_", " ")}`)} />
-        <EscrowSummary totals={offer.totals} />
+        <ReleaseSummary totals={offer.totals} />
         {offer.milestones.map((milestone) => (
           <MilestoneCard
             key={milestone.id}

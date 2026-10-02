@@ -1,6 +1,6 @@
 import { CancelReasonInputSchema } from "@/contracts/offers";
 import { route } from "@/server/http";
-import { cancelRemaining } from "@/services/escrow";
+import { cancelRemaining } from "@/services/release";
 
 export const runtime = "nodejs";
 

@@ -138,13 +138,13 @@ export function WalletScreen() {
           <div>
             <dt className="text-xs text-muted-foreground">Held as buyer</dt>
             <dd className="mt-1">
-              <Money value={account.escrow.heldAsBuyer} muted={account.escrow.heldAsBuyer.amountMinor === 0} />
+              <Money value={account.unreleased.heldAsBuyer} muted={account.unreleased.heldAsBuyer.amountMinor === 0} />
             </dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Incoming as seller</dt>
             <dd className="mt-1">
-              <Money value={account.escrow.incomingAsSeller} muted={account.escrow.incomingAsSeller.amountMinor === 0} />
+              <Money value={account.unreleased.incomingAsSeller} muted={account.unreleased.incomingAsSeller.amountMinor === 0} />
             </dd>
           </div>
         </dl>

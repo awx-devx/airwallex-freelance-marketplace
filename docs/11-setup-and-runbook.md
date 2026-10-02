@@ -79,7 +79,7 @@ The repo includes a [`.replit`](../.replit) file. Replit imports the GitHub repo
 2. **Home:** point out the incoming offer from Maya ("Coffee brand identity", 3 milestones, $1,500).
 3. **Review offer:** show the milestone breakdown and fee transparency.
 4. **Accept & pay:** Drop-in, card `4035 5010 0000 0008`. Open **Behind the scenes** to show the PaymentIntent (no `connected_account_id` on this sandbox) and the held Funds Splits to the seller and Revenue business accounts.
-5. **Funded:** all milestones show **Held in escrow**. The panel shows `payment_intent.succeeded` and 6 Funds Splits created with `auto_release: false`.
+5. **Funded:** all milestones show **Awaiting release**. The panel shows `payment_intent.succeeded` and 6 Funds Splits created with `auto_release: false`.
 6. **Switch to seller:** log out, then **Log in as Maya** from the demo accounts list. Submit delivery links for Milestone 1.
 7. **Switch back to Sam:** approve Milestone 1. The panel shows two `release` calls, then `funds_split.settled`.
 8. **Maya's wallet:** balance up by $270 (90% of $300). **/platform:** Revenue account up by $24.

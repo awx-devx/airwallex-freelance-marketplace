@@ -5,7 +5,7 @@ const secret = "s".repeat(32);
 
 function env(overrides: Record<string, string | undefined> = {}) {
   return {
-    MONGODB_URI: "mongodb://localhost:27017/awx-escrow",
+    MONGODB_URI: "mongodb://localhost:27017/awx-marketplace",
     SESSION_SECRET: secret,
     ...overrides,
   };

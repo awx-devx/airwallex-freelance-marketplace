@@ -1,5 +1,5 @@
 import { breakdown } from "@/services/fees";
-import type { EscrowLegDTO } from "@/contracts/offers";
+import type { ReleaseLegDTO } from "@/contracts/offers";
 import type { MockDb, MockMilestone, MockOffer, MockUser } from "@/lib/api/mock/types";
 
 const FEE = { platformFeePercent: 10, processingReservePercent: 2 };
@@ -117,12 +117,12 @@ function milestone(
     breakdown: parts,
     status,
     deliveries: [],
-    escrowLegs: [],
+    releaseLegs: [],
     ...extra,
   };
 }
 
-function legs(id: string, sellerMinor: number, revenueMinor: number, status: string): EscrowLegDTO[] {
+function legs(id: string, sellerMinor: number, revenueMinor: number, status: string): ReleaseLegDTO[] {
   return [
     {
       kind: "CA_TRANSFER",
@@ -191,21 +191,21 @@ export function createSeedDb(): MockDb {
     paidAt: "2026-09-23T15:00:00.000Z",
     deliveries: [delivery("del_audit", ["https://github.com/example/shopify-audit"], "Findings and the punch list")],
   });
-  audit.escrowLegs = legs(audit.id, audit.breakdown.sellerMinor, audit.breakdown.revenueMinor, "SETTLED");
+  audit.releaseLegs = legs(audit.id, audit.breakdown.sellerMinor, audit.breakdown.revenueMinor, "SETTLED");
   const fixes = milestone(shop, 1, "Fixes", 900, "SUBMITTED", {
     deliveries: [delivery("del_fixes", ["https://github.com/example/shopify-fixes"], "Theme fixes are on the branch")],
   });
 
   const story = milestone(trailer, 0, "Storyboard", 600, "PAID", { paidAt: "2026-09-21T15:00:00.000Z" });
-  story.escrowLegs = legs(story.id, story.breakdown.sellerMinor, story.breakdown.revenueMinor, "SETTLED");
+  story.releaseLegs = legs(story.id, story.breakdown.sellerMinor, story.breakdown.revenueMinor, "SETTLED");
   const animation = milestone(trailer, 1, "Animation", 1800, "FUNDED");
   const finalCut = milestone(trailer, 2, "Final cut", 600, "FUNDED");
 
   const pageCopy = milestone(copy, 0, "Copy", 350, "PAID", { paidAt: "2026-09-18T15:00:00.000Z" });
-  pageCopy.escrowLegs = legs(pageCopy.id, pageCopy.breakdown.sellerMinor, pageCopy.breakdown.revenueMinor, "SETTLED");
+  pageCopy.releaseLegs = legs(pageCopy.id, pageCopy.breakdown.sellerMinor, pageCopy.breakdown.revenueMinor, "SETTLED");
 
   const appIcon = milestone(icon, 0, "Icon", 450, "REFUNDED", { refundedAt: "2026-09-19T15:00:00.000Z" });
-  appIcon.escrowLegs = [
+  appIcon.releaseLegs = [
     {
       kind: "REFUND",
       share: "BUYER_REFUND",

@@ -8,7 +8,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     <div className="flex min-h-svh flex-col bg-surface">
       <header className="sticky top-0 z-30 border-b border-border bg-background">
         <div className="flex items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" aria-label="Freelance escrow" className="inline-flex items-center text-foreground max-md:min-h-11">
+          <Link href="/" aria-label="Freelance Marketplace" className="inline-flex items-center text-foreground max-md:min-h-11">
             <LogoMark />
           </Link>
           <ThemeToggle variant="menu" className="md:hidden" />

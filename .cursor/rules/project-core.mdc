@@ -1,5 +1,5 @@
 ---
-description: Core project context, stack, and non-negotiable invariants for the Airwallex freelance escrow demo
+description: Core project context, stack, and non-negotiable invariants for the Airwallex freelance marketplace demo
 alwaysApply: true
 ---
 

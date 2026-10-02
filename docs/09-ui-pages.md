@@ -75,7 +75,7 @@ Values below are the **light** theme (`:root`). Dark and any later theme overrid
 | `--success` | `#16A34A` | Paid, completed |
 | `--warning` | `#D97706` | Pending, awaiting |
 | `--danger` | `#DC2626` | Failed, destructive |
-| `--info` | `#2563EB` | Held in escrow |
+| `--info` | `#2563EB` | Awaiting release |
 | `--radius` | `0.25rem` | Cards, inputs, buttons. Avatars, switches, and progress stay fully round. |
 
 Dark theme (class `dark` on `<html>`): three warm steps, canvas then sheet then card. Type is ivory. Status colours are muted jewels, not neon. Primary stays `#612FFF`.
@@ -105,7 +105,7 @@ Type scale: `text-xs` 12 / `text-sm` 14 (default UI text, Inter) / `text-base` 1
 | `PENDING_FUNDING` | Awaiting funding | neutral | `Clock` |
 | `AWAITING_PAYMENT` | Awaiting payment | warning, spinner | `Loader2` |
 | `ACTIVE` | Active | info | `CircleDot` |
-| `FUNDED` | Held in escrow | info | `Lock` |
+| `FUNDED` | Awaiting release | info | `Lock` |
 | `SUBMITTED` | Awaiting review | violet | `Inbox` |
 | `CHANGES_REQUESTED` | Changes requested | warning | `RotateCcw` |
 | `RELEASING` | Releasing… | warning, spinner | `Loader2` |
@@ -177,12 +177,12 @@ Every component below must appear on the **UI kit demo page** (§4) in all liste
 | `OfferCard` | `OfferSummaryDTO` | incoming (Review), buying active with progress, selling with next action, completed, cancelled, welcome badge |
 | `OfferHeader` | `OfferDTO` | each offer status; buyer vs seller view |
 | `OfferActionBar` | `OfferDTO.allowedActions` | each combination (accept/decline, withdraw, continue/cancel payment, cancel remaining, none) |
-| `EscrowSummary` | `OfferDTO.totals` | all held, partly released, partly refunded, completed |
+| `ReleaseSummary` | `OfferDTO.totals` | all held, partly released, partly refunded, completed |
 | `MilestoneCard` | `MilestoneDTO`, `viewerRole` | **matrix:** every `MilestoneStatus` × buyer/seller (rendered from fixtures), including pending spinner, failed with error + retry, timed-out sync |
 | `DeliveryForm` | `onSubmit` | empty, 1 link, 5 links (max), invalid URL, submitting |
 | `DeliveryView` | `DeliveryDTO` | with note, without note, with review comment |
 | `ReviewActions` | approve / request changes | idle, approving (loading), request-changes dialog open |
-| `EscrowLegList` | `EscrowLegDTO[]` | split legs, transfer legs, refund leg, statuses |
+| `ReleaseLegList` | `ReleaseLegDTO[]` | split legs, transfer legs, refund leg, statuses |
 | `ActivityTimeline` | `ActivityItemDTO[]` | empty, typical offer history |
 | `AirwallexActivityPanel` | `AirwallexEventDTO[]` | collapsed, expanded, API call row (2xx and 4xx), webhook row (processed/failed), JSON expanded |
 | `BalanceTable` | `BalanceDTO[]` | one currency, multiple, loading, empty |
@@ -250,7 +250,7 @@ Each page is a thin `page.tsx` that renders a client **screen** component. Stand
 - **UI (top to bottom):**
   1. `OfferHeader` (title, `StatusPill`, seller → buyer, total, short ref)
   2. `OfferActionBar` driven by `offer.allowedActions` (Accept & pay navigates to `/offers/[id]/pay`). **Cancel remaining** confirms with the same refund destination as a single cancel: the buyer reads "your card" or "your wallet"; the seller reads "{buyer}'s card" or wallet.
-  3. `EscrowSummary`
+  3. `ReleaseSummary`
   4. `MilestoneCard` list, each driven by `milestone.allowedActions`:
      - `SUBMIT_DELIVERY` → `DeliveryForm`
      - `APPROVE` / `REQUEST_CHANGES` → latest `DeliveryView` + `ReviewActions`
@@ -258,7 +258,7 @@ Each page is a thin `page.tsx` that renders a client **screen** component. Stand
      - `RETRY` → button on failed/stuck milestones
      - pending, release not accepted yet → spinner + "Waiting for Airwallex…" + **Sync** (and "Still waiting" after the 60s poll)
      - card splits already `RELEASED` → **Released**, no spinner. The seller is told it was released to them; the buyer is told it was released to the seller. Settlement can take a day, and either of them can leave. **Sync** stays. **Paid** still waits for `SETTLED`
-     - `PAID` → the seller reads "Paid to you · 25 Sep"; the buyer reads "Paid to Maya · 25 Sep". Then `EscrowLegList`
+     - `PAID` → the seller reads "Paid to you · 25 Sep"; the buyer reads "Paid to Maya · 25 Sep". Then `ReleaseLegList`
   5. `ActivityTimeline`
   6. `AirwallexActivityPanel` (collapsed by default; "Behind the scenes: Airwallex")
 - **Errors:** `404` → "Offer not found"; `403` → "You're not part of this offer".
@@ -266,19 +266,19 @@ Each page is a thin `page.tsx` that renders a client **screen** component. Stand
 ### `/offers/[id]/pay` — `PayScreen`
 - **Data:** `useOffer(id)`, `usePublicConfig()`, `useWallet()` (wallet tab)
 - **Mutations:** `useStartCardPayment(id)` (on mount of the card tab), `usePayFromWallet(id)`, `useCancelPayment(id)`
-- **UI:** order summary (milestones + total; payee "Platform, held in escrow for Maya"); `Tabs` for **Card** and **Wallet** (`?method=`).
+- **UI:** order summary (milestones + total; payee "Platform, awaiting release for Maya"); `Tabs` for **Card** and **Wallet** (`?method=`).
   - Card tab: `DropInCheckout` (real) or `MockCardForm` (mocks), plus `TestCardHint`
   - Wallet tab: balance, **Pay $X from wallet** (disabled with reason if insufficient)
-- Explainer: "Your payment is held by Airwallex and released to the seller milestone by milestone when you approve."
+- Explainer: "Each milestone stays unreleased until you approve it."
 - Guard: if `ACCEPT_AND_PAY`/`CONTINUE_PAYMENT` isn't in `allowedActions`, redirect to `/offers/[id]`.
 
 ### `/offers/[id]/pay/return` — `PayReturnScreen`
 - **Mutations:** `useReconcilePayment(id)` on mount; then `useOfferSync` if still `AWAITING_PAYMENT`
-- **UI:** spinner → success ("Payment received, $X held in escrow", **View contract**) or failure ("Payment not completed", **Try again**).
+- **UI:** spinner → success ("Payment received, $X awaiting release", **View contract**) or failure ("Payment not completed", **Try again**).
 
 ### `/wallet` — `WalletScreen`
 - **Data:** `useWallet()`, `useWalletTransactions()` (infinite)
-- **UI:** `AccountCard`, `BalanceTable`, escrow summary (held as buyer / incoming as seller), `TransactionList` with **Load more**. Withdraw and Send dialogs. Send stays disabled, with "Choose who to send to.", until a recipient is picked.
+- **UI:** `AccountCard`, `BalanceTable`, unreleased totals (held as buyer / incoming as seller), `TransactionList` with **Load more**. Withdraw and Send dialogs. Send stays disabled, with "Choose who to send to.", until a recipient is picked.
 
 ### `/platform` — `PlatformScreen` (demo-only)
 - **Gate:** when `DEMO_ADMIN_KEY` is set, `PlatformGate` asks for that key before the screen renders. A correct key sets an httpOnly cookie for 12 hours. Leave the key unset to skip the gate. Mock mode skips it too.
@@ -288,7 +288,7 @@ Each page is a thin `page.tsx` that renders a client **screen** component. Stand
 
 ## 6. Copy guidelines
 
-- Say **"held in escrow"** (not "pending") for funded milestones.
+- Say **"awaiting release"** (not "pending") for funded milestones.
 - Say **"released"** when the buyer approves, and **"paid"** when Airwallex confirms settlement.
 - Always show the money split explicitly. It's the point of the demo.
 - Never imply real money: include "sandbox" or "demo" on payment screens.

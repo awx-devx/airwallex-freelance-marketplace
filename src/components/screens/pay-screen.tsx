@@ -113,7 +113,7 @@ export function PayScreen({ id }: { id: string }) {
         }
       />
       <section className="rounded-md border border-border bg-card p-5">
-        <p className="text-xs text-muted-foreground">Platform, held in escrow for {offer.seller.name}</p>
+        <p className="text-xs text-muted-foreground">Platform, awaiting release for {offer.seller.name}</p>
         <h2 className="mt-1 font-serif text-2xl font-medium tracking-tight">{offer.title}</h2>
         <ul className="mt-4 flex flex-col">
           {offer.milestones.map((milestone) => (
@@ -129,7 +129,7 @@ export function PayScreen({ id }: { id: string }) {
         </div>
       </section>
       <p className="max-w-xl text-sm text-muted-foreground">
-        Your payment is held by Airwallex and released to the seller milestone by milestone when you approve.
+        Each milestone stays unreleased until you approve it.
       </p>
       <Tabs value={walletEnabled ? method : "card"} onValueChange={selectMethod}>
         <TabsList>

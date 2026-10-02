@@ -8,8 +8,8 @@ import { BalanceTable } from "@/components/domain/balance-table";
 import { DeliveryForm } from "@/components/domain/delivery-form";
 import { DeliveryView } from "@/components/domain/delivery-view";
 import { DropInCheckout } from "@/components/domain/drop-in-checkout";
-import { EscrowLegList } from "@/components/domain/escrow-leg-list";
-import { EscrowSummary } from "@/components/domain/escrow-summary";
+import { ReleaseLegList } from "@/components/domain/release-leg-list";
+import { ReleaseSummary } from "@/components/domain/release-summary";
 import { FeeBreakdown, resolveFeeBreakdown } from "@/components/domain/fee-breakdown";
 import { MilestoneCard } from "@/components/domain/milestone-card";
 import { MilestoneEditor } from "@/components/domain/milestone-editor";
@@ -191,18 +191,18 @@ export function DomainSection({ viewerRole }: { viewerRole: ViewerRole }) {
         ))}
       </KitSection>
 
-      <KitSection id="escrow-summary" title="EscrowSummary" note="Held, partly released, refunded, and completed.">
-        <Variant caption="EscrowSummary / all held">
-          <EscrowSummary totals={seedOffer("off_social", "usr_hannah").totals} />
+      <KitSection id="release-summary" title="ReleaseSummary" note="Held, partly released, refunded, and completed.">
+        <Variant caption="ReleaseSummary / all held">
+          <ReleaseSummary totals={seedOffer("off_social", "usr_hannah").totals} />
         </Variant>
-        <Variant caption="EscrowSummary / partly released">
-          <EscrowSummary totals={seedOffer("off_shopify", "usr_sam").totals} />
+        <Variant caption="ReleaseSummary / partly released">
+          <ReleaseSummary totals={seedOffer("off_shopify", "usr_sam").totals} />
         </Variant>
-        <Variant caption="EscrowSummary / refunded">
-          <EscrowSummary totals={seedOffer("off_icon", "usr_maya").totals} />
+        <Variant caption="ReleaseSummary / refunded">
+          <ReleaseSummary totals={seedOffer("off_icon", "usr_maya").totals} />
         </Variant>
-        <Variant caption="EscrowSummary / completed">
-          <EscrowSummary totals={seedOffer("off_copy", "usr_omar").totals} />
+        <Variant caption="ReleaseSummary / completed">
+          <ReleaseSummary totals={seedOffer("off_copy", "usr_omar").totals} />
         </Variant>
       </KitSection>
 
@@ -288,9 +288,9 @@ export function DomainSection({ viewerRole }: { viewerRole: ViewerRole }) {
         </Variant>
       </KitSection>
 
-      <KitSection id="escrow-leg-list" title="EscrowLegList" note="A funds split, a transfer, and a refund.">
-        <Variant caption="EscrowLegList / split, transfer, refund" className="@min-[720px]:col-span-2">
-          <EscrowLegList legs={legSamples} />
+      <KitSection id="release-leg-list" title="ReleaseLegList" note="A funds split, a transfer, and a refund.">
+        <Variant caption="ReleaseLegList / split, transfer, refund" className="@min-[720px]:col-span-2">
+          <ReleaseLegList legs={legSamples} />
         </Variant>
       </KitSection>
 

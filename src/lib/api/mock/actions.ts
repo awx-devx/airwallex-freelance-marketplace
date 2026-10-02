@@ -1,5 +1,5 @@
 import { ZodError, type ZodType } from "zod";
-import type { EscrowLegDTO, OfferAction, MilestoneAction } from "@/contracts/offers";
+import type { ReleaseLegDTO, OfferAction, MilestoneAction } from "@/contracts/offers";
 import {
   CancelReasonInputSchema,
   CreateOfferInputSchema,
@@ -166,7 +166,7 @@ function maybeComplete(offer: MockOffer) {
   }
 }
 
-function cardLegs(milestone: MockMilestone): EscrowLegDTO[] {
+function cardLegs(milestone: MockMilestone): ReleaseLegDTO[] {
   return [
     {
       kind: "FUNDS_SPLIT",
@@ -196,10 +196,10 @@ function fundOffer(offer: MockOffer, rail: "CARD" | "WALLET") {
   for (const milestone of offer.milestones) {
     if (milestone.status !== "PENDING_FUNDING") continue;
     milestone.status = "FUNDED";
-    if (rail === "CARD") milestone.escrowLegs = cardLegs(milestone);
+    if (rail === "CARD") milestone.releaseLegs = cardLegs(milestone);
   }
   activity(offer, "PAYMENT_SUCCEEDED", rail === "CARD" ? "Payment received by card" : "Payment received from wallet");
-  activity(offer, "SPLITS_CREATED", rail === "CARD" ? "Funds held in escrow" : "Wallet payment held by the platform");
+  activity(offer, "SPLITS_CREATED", rail === "CARD" ? "Funds awaiting release" : "Wallet payment held by the platform");
   commit();
 }
 
@@ -209,8 +209,8 @@ function settleRelease(offerId: string, milestoneId: string) {
   const milestone = offer?.milestones.find((item) => item.id === milestoneId);
   if (!offer || !milestone || milestone.status !== "RELEASING") return;
   const rail = offer.fundingRail ?? "CARD";
-  if (milestone.escrowLegs.length === 0) {
-    milestone.escrowLegs =
+  if (milestone.releaseLegs.length === 0) {
+    milestone.releaseLegs =
       rail === "CARD"
         ? cardLegs(milestone)
         : [
@@ -230,7 +230,7 @@ function settleRelease(offerId: string, milestoneId: string) {
             },
           ];
   }
-  for (const leg of milestone.escrowLegs) leg.status = "SETTLED";
+  for (const leg of milestone.releaseLegs) leg.status = "SETTLED";
   milestone.status = "PAID";
   milestone.paidAt = nowIso();
   milestone.pendingSince = undefined;
@@ -242,7 +242,7 @@ function settleRelease(offerId: string, milestoneId: string) {
   db.platformAvailableMinor += milestone.breakdown.reserveMinor;
   txn(seller.id, "TRANSFER_IN", `Milestone payment: ${milestone.title}`, milestone.breakdown.sellerMinor, offer.shortRef);
   activity(offer, "MILESTONE_PAID", `${milestone.title} paid`, undefined, milestone.id);
-  eventHook(offer.id, rail === "CARD" ? "funds_split.settled" : "connected_account_transfer.settled", milestone.escrowLegs[0]?.airwallexId ?? milestone.id);
+  eventHook(offer.id, rail === "CARD" ? "funds_split.settled" : "connected_account_transfer.settled", milestone.releaseLegs[0]?.airwallexId ?? milestone.id);
   maybeComplete(offer);
   touch(offer);
 }
@@ -255,7 +255,7 @@ function settleRefund(offerId: string, milestoneId: string) {
   milestone.refundedAt = nowIso();
   milestone.pendingSince = undefined;
   milestone.lastError = undefined;
-  milestone.escrowLegs.push({
+  milestone.releaseLegs.push({
     kind: "REFUND",
     share: "BUYER_REFUND",
     airwallexId: `rfd_mock_${milestone.id}`,
@@ -278,8 +278,8 @@ function scheduleRelease(offer: MockOffer, milestone: MockMilestone) {
   milestone.pendingSince = nowIso();
   milestone.lastError = undefined;
   if ((offer.fundingRail ?? "CARD") === "CARD") {
-    const legs = milestone.escrowLegs.length > 0 ? milestone.escrowLegs : cardLegs(milestone);
-    milestone.escrowLegs = legs.map((leg) => (leg.kind === "FUNDS_SPLIT" ? { ...leg, status: "RELEASED" } : leg));
+    const legs = milestone.releaseLegs.length > 0 ? milestone.releaseLegs : cardLegs(milestone);
+    milestone.releaseLegs = legs.map((leg) => (leg.kind === "FUNDS_SPLIT" ? { ...leg, status: "RELEASED" } : leg));
   }
   eventApi(offer.id, "POST", `/api/v1/pa/funds_splits/${milestone.id}/release`, { status: "RELEASED" });
   scheduleMockJob(() => settleRelease(offer.id, milestone.id), SETTLE_MS);
@@ -461,7 +461,7 @@ function insertOffer(input: {
         breakdown: breakdown(amountMinor, FEE),
         status: "PENDING_FUNDING",
         deliveries: [],
-        escrowLegs: [],
+        releaseLegs: [],
       };
     }),
   };
@@ -724,7 +724,7 @@ export function payFromWallet(offerId: string) {
   const total = totalMinor(offer);
   if (user.availableMinor < total) fail(409, "INSUFFICIENT_BALANCE", "Wallet balance is too low.");
   user.availableMinor -= total;
-  txn(user.id, "CHARGE", `Escrow funding ${offer.shortRef}`, -total, offer.shortRef);
+  txn(user.id, "CHARGE", `Marketplace funding ${offer.shortRef}`, -total, offer.shortRef);
   offer.payment = { rail: "WALLET", status: "PENDING", attempt: 1, chargeId: `ch_mock_${offer.id}` };
   offer.status = "AWAITING_PAYMENT";
   offer.fundingRail = "WALLET";
@@ -760,7 +760,7 @@ export function wallet() {
         total: money(user.availableMinor + user.pendingMinor + user.reservedMinor),
       },
     ],
-    escrow: { heldAsBuyer: money(held("buyer")), incomingAsSeller: money(held("seller")) },
+    unreleased: { heldAsBuyer: money(held("buyer")), incomingAsSeller: money(held("seller")) },
   };
 }
 

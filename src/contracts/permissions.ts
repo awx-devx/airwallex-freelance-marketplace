@@ -53,10 +53,10 @@ const ACCEPTED_SPLIT = new Set(["RELEASED", "SETTLED"]);
 /** Card release has been accepted. Settlement to the wallet can still take a day. */
 export function cardReleaseAccepted(milestone: {
   status: MilestoneStatus;
-  escrowLegs: ReadonlyArray<{ kind: string; share: string; status: string }>;
+  releaseLegs: ReadonlyArray<{ kind: string; share: string; status: string }>;
 }): boolean {
   if (milestone.status !== "RELEASING") return false;
-  const splits = milestone.escrowLegs.filter(
+  const splits = milestone.releaseLegs.filter(
     (leg) => leg.kind === "FUNDS_SPLIT" && (leg.share === "SELLER" || leg.share === "REVENUE"),
   );
   return splits.some((leg) => leg.share === "SELLER") && splits.every((leg) => ACCEPTED_SPLIT.has(leg.status));

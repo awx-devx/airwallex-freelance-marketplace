@@ -29,7 +29,7 @@ export function DemoBanner({
   name?: string;
   dismissible?: boolean;
 }) {
-  const key = `awx-escrow.banner.${variant}`;
+  const key = `awx-marketplace.banner.${variant}`;
   const copy = variant === "guest" && name ? `You're exploring as ${name} (shared demo account).` : COPY[variant];
   const dismissed = useSyncExternalStore(
     subscribe,

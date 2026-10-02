@@ -1,5 +1,6 @@
 import { compare, hash } from "bcryptjs";
 import { describeLogin } from "@/lib/airwallex/client";
+import { isDuplicateRequest } from "@/lib/airwallex/errors";
 import { readString } from "@/lib/airwallex/json";
 import { seedTopUpRequestId } from "@/lib/airwallex/requestIds";
 import { createConnectedAccountTransfer, retrieveConnectedAccountTransfer } from "@/lib/airwallex/wallet";
@@ -95,17 +96,23 @@ async function requireReady(userId: string, label: string) {
 }
 
 async function topUp(userId: string, accountId: string, major: number, seedVersion: number, currency: string): Promise<void> {
-  const transfer = await createConnectedAccountTransfer({
-    amountMinor: fromAwxAmount(major, currency),
-    currency,
-    destination: accountId,
-    requestId: seedTopUpRequestId(userId, seedVersion),
-    reason: "professional_business_services",
-    reference: "Seed buyer top-up",
-  });
-  const transferId = readString(transfer, "id");
-  if (!transferId) throw new Error(`Seed top-up for ${userId} did not return an id.`);
-  await waitUntilSettled(transferId);
+  const requestId = seedTopUpRequestId(userId, seedVersion);
+  try {
+    const transfer = await createConnectedAccountTransfer({
+      amountMinor: fromAwxAmount(major, currency),
+      currency,
+      destination: accountId,
+      requestId,
+      reason: "professional_business_services",
+      reference: "Seed buyer top-up",
+    });
+    const transferId = readString(transfer, "id");
+    if (!transferId) throw new Error(`Seed top-up for ${userId} did not return an id.`);
+    await waitUntilSettled(transferId);
+  } catch (error) {
+    if (!isDuplicateRequest(error)) throw error;
+    console.log(`Seed top-up ${requestId} was already sent.`);
+  }
 }
 
 async function main(): Promise<void> {

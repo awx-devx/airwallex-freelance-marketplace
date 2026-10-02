@@ -61,7 +61,7 @@ export function TopBar({
   return (
     <header className={cn("relative z-30 border-b border-border bg-background", pinned && "sticky top-0")}>
       <div className="flex min-h-14 items-center justify-between gap-3 px-4 sm:px-6">
-        <Link href="/" aria-label="Freelance escrow" className="inline-flex items-center text-foreground max-md:min-h-11">
+        <Link href="/" aria-label="Freelance Marketplace" className="inline-flex items-center text-foreground max-md:min-h-11">
           <LogoMark />
         </Link>
         <div className="hidden items-center gap-2 md:flex">

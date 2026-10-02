@@ -75,7 +75,7 @@ export function milestoneFor(status: MilestoneStatus, role: ViewerRole, extra: P
     status,
     isPending: milestoneIsPending(status),
     deliveries,
-    escrowLegs: status === "PAID" ? (paid?.escrowLegs ?? []) : status === "REFUNDED" ? (refunded?.escrowLegs ?? []) : [],
+    releaseLegs: status === "PAID" ? (paid?.releaseLegs ?? []) : status === "REFUNDED" ? (refunded?.releaseLegs ?? []) : [],
     paidAt: status === "PAID" ? "2026-09-23T15:00:00.000Z" : undefined,
     refundedAt: status === "REFUNDED" ? "2026-09-19T15:00:00.000Z" : undefined,
     lastError:

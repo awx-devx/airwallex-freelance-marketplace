@@ -8,7 +8,7 @@ In one sentence: **the seller sends an offer, the buyer accepts and pays, the se
 
 ## Goals of the demo
 
-1. Show a believable freelance escrow experience end to end in under 5 minutes.
+1. Show a believable freelance marketplace end to end in under 5 minutes.
 2. Exercise each Airwallex capability named in the brief with **real sandbox API calls**, with no mocked money movement:
    - Payment acceptance (PaymentIntent + Drop-in element)
    - Funds Split (to seller + to a platform revenue account)
@@ -47,7 +47,7 @@ Full step-by-step detail is in [05-user-flows.md](./05-user-flows.md).
 2. **Account provisioning.** Every new user gets an Airwallex connected account, a welcome wallet credit, and a **welcome offer** from a random seed seller, so their home page isn't empty.
 3. **Create and send an offer (seller).** Title, description, buyer (pick a user), milestones (title, description, amount, optional due date). The UI shows a live fee breakdown.
 4. **Accept and pay (buyer).** Buyer reviews the offer, clicks Accept, and pays the full total with a sandbox card via the Drop-in element, or from their wallet balance.
-5. **Funds held.** Webhook `payment_intent.succeeded` triggers Funds Split creation with delayed release. All milestones show **Funded — held in escrow**.
+5. **Awaiting release.** Webhook `payment_intent.succeeded` triggers Funds Split creation with `auto_release: false`. All milestones show **Awaiting release**.
 6. **Deliver a milestone (seller).** Seller submits one or more links plus a note.
 7. **Approve or request changes (buyer).** Approve triggers the release of that milestone's splits. Request changes sends it back to the seller.
 8. **Seller gets paid.** Webhook `funds_split.settled` marks the milestone **Paid**, and the seller's wallet balance increases.

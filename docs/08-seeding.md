@@ -59,7 +59,7 @@ Designed so **every guest-pool user has something to do** as both buyer and sell
 
 For card-rail examples, the demo presenter accepts one of the `SENT` offers live.
 
-`// DEMO-ONLY:` The seed script moves real sandbox money by calling the escrow service with the seller/buyer as actors, bypassing the UI.
+`// DEMO-ONLY:` The seed script moves real sandbox money by calling the release service with the seller/buyer as actors, bypassing the UI.
 
 ### Welcome offer templates
 
@@ -90,6 +90,7 @@ seed():
     user = upsertUser(spec)                  // by email; keep existing passwordHash if unchanged
     provision(user)                          // BUSINESS CA; resumable; no-op if READY
     if spec.extraTopUp: caTransfer(user, spec.extraTopUp, request_id = `seedtopup:{userId}:{seedVersion}`)
+      // A reused request_id means that top-up was already sent. Skip it; the wallet already has the money.
 
   for spec in SEED_OFFERS:
     if offer with seedKey exists: skip       // offers carry `seedKey` for idempotency

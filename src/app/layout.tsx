@@ -12,8 +12,8 @@ const newsreader = Newsreader({
   variable: "--font-serif",
 });
 
-const title = "Freelance escrow";
-const description = "Milestone payments, held until the buyer approves.";
+const title = "Freelance Marketplace";
+const description = "Milestone payments, released when the buyer approves.";
 
 function metadataBase() {
   try {

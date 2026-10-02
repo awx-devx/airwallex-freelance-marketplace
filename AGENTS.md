@@ -4,7 +4,7 @@ Guidance for AI coding agents (and humans) working in this repo.
 
 ## What this is
 
-A **demo** freelance escrow marketplace built on a single **Airwallex sandbox** platform account. The seller sends a milestone-based offer, the buyer pays up front, and each milestone's funds are **held** (Funds Split with `auto_release: false`) and **released** only when the buyer approves. Every user gets an Airwallex **connected account** with a wallet. It is not production-ready by design.
+A **demo** freelance marketplace built on a single **Airwallex sandbox** platform account. The seller sends a milestone-based offer, the buyer pays up front, and each milestone's funds are **held** (Funds Split with `auto_release: false`) and **released** only when the buyer approves. Every user gets an Airwallex **connected account** with a wallet. It is not production-ready by design.
 
 Stack: Next.js (App Router, TypeScript), MongoDB (Mongoose), Tailwind v4 + shadcn/ui, TanStack Query over a typed API library, react-hook-form, zod, `@airwallex/components-sdk`. No Redis, no global client store.
 
@@ -35,7 +35,7 @@ Focused rules live in `.cursor/rules/*.mdc`.
 3. **Status-guarded (conditional) updates** for every offer/milestone transition. Webhook updates are monotonic and idempotent.
 4. **Deterministic `request_id`s** for all Airwallex create calls.
 5. **Webhooks are the source of truth** for money state. Browser checkout success is provisional.
-6. **Never** pass `funds_split_data` on PaymentIntent create (it auto-releases and breaks escrow).
+6. **Never** pass `funds_split_data` on PaymentIntent create (it auto-releases and pays out before the buyer approves).
 7. Don't invent Airwallex endpoints or fields. Check `docs/03` or https://www.airwallex.com/docs/llms.txt.
 
 ## Comment tags (required)

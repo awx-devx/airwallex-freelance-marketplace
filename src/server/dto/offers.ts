@@ -1,6 +1,6 @@
 import type { ActivityItemDTO } from "@/contracts/activity";
 import { ActivityItemSchema } from "@/contracts/activity";
-import type { EscrowLegDTO, OfferDTO, OfferSummaryDTO } from "@/contracts/offers";
+import type { ReleaseLegDTO, OfferDTO, OfferSummaryDTO } from "@/contracts/offers";
 import { OfferSchema, OfferSummarySchema } from "@/contracts/offers";
 import { milestoneActions, milestoneIsPending, offerActions, offerIsPending } from "@/contracts/permissions";
 import { milestoneActionOptions } from "@/server/milestoneOptions";
@@ -27,62 +27,62 @@ function role(offer: OfferDocument, viewerId: string): "BUYER" | "SELLER" {
   return offer.buyerId.toString() === viewerId ? "BUYER" : "SELLER";
 }
 
-function escrowLegs(milestone: OfferDocument["milestones"][number], currency: string): EscrowLegDTO[] {
-  const escrow = milestone.escrow;
-  if (!escrow) return [];
-  const legs: EscrowLegDTO[] = [];
-  if (escrow.sellerSplit) {
+function releaseLegs(milestone: OfferDocument["milestones"][number], currency: string): ReleaseLegDTO[] {
+  const release = milestone.release;
+  if (!release) return [];
+  const legs: ReleaseLegDTO[] = [];
+  if (release.sellerSplit) {
     legs.push({
       kind: "FUNDS_SPLIT",
       share: "SELLER",
-      airwallexId: escrow.sellerSplit.splitId,
-      amount: money(escrow.sellerSplit.amountMinor, currency),
-      status: escrow.sellerSplit.status,
+      airwallexId: release.sellerSplit.splitId,
+      amount: money(release.sellerSplit.amountMinor, currency),
+      status: release.sellerSplit.status,
     });
   }
-  if (escrow.revenueSplit) {
+  if (release.revenueSplit) {
     legs.push({
       kind: "FUNDS_SPLIT",
       share: "REVENUE",
-      airwallexId: escrow.revenueSplit.splitId,
-      amount: money(escrow.revenueSplit.amountMinor, currency),
-      status: escrow.revenueSplit.status,
+      airwallexId: release.revenueSplit.splitId,
+      amount: money(release.revenueSplit.amountMinor, currency),
+      status: release.revenueSplit.status,
     });
   }
-  if (escrow.sellerTransfer) {
+  if (release.sellerTransfer) {
     legs.push({
       kind: "CA_TRANSFER",
       share: "SELLER",
-      airwallexId: escrow.sellerTransfer.transferId,
-      amount: money(escrow.sellerTransfer.amountMinor, currency),
-      status: escrow.sellerTransfer.status,
+      airwallexId: release.sellerTransfer.transferId,
+      amount: money(release.sellerTransfer.amountMinor, currency),
+      status: release.sellerTransfer.status,
     });
   }
-  if (escrow.revenueTransfer) {
+  if (release.revenueTransfer) {
     legs.push({
       kind: "CA_TRANSFER",
       share: "REVENUE",
-      airwallexId: escrow.revenueTransfer.transferId,
-      amount: money(escrow.revenueTransfer.amountMinor, currency),
-      status: escrow.revenueTransfer.status,
+      airwallexId: release.revenueTransfer.transferId,
+      amount: money(release.revenueTransfer.amountMinor, currency),
+      status: release.revenueTransfer.status,
     });
   }
-  if (escrow.refund) {
+  if (release.refund) {
     legs.push({
       kind: "REFUND",
       share: "BUYER_REFUND",
-      airwallexId: escrow.refund.refundId,
+      airwallexId: release.refund.refundId,
       amount: money(milestone.amountMinor, currency),
-      status: escrow.refund.status,
+      status: release.refund.status,
     });
   }
-  if (escrow.refundTransfer) {
+  if (release.refundTransfer) {
     legs.push({
       kind: "CA_TRANSFER",
       share: "BUYER_REFUND",
-      airwallexId: escrow.refundTransfer.transferId,
-      amount: money(escrow.refundTransfer.amountMinor, currency),
-      status: escrow.refundTransfer.status,
+      airwallexId: release.refundTransfer.transferId,
+      amount: money(release.refundTransfer.amountMinor, currency),
+      status: release.refundTransfer.status,
     });
   }
   return legs;
@@ -185,7 +185,7 @@ export function toOffer(
             }
           : undefined,
       })),
-      escrowLegs: escrowLegs(milestone, currency),
+      releaseLegs: releaseLegs(milestone, currency),
       allowedActions: milestoneActions(milestone, offer, viewerRole, milestoneActionOptions()),
       approvedAt: iso(milestone.approvedAt),
       paidAt: iso(milestone.paidAt),

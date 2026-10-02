@@ -54,7 +54,7 @@ describe("OfferSchema", () => {
           status: "PAID",
           isPending: false,
           deliveries: [],
-          escrowLegs: [],
+          releaseLegs: [],
           allowedActions: [],
           paidAt: "2026-09-25T17:42:00.000Z",
         },

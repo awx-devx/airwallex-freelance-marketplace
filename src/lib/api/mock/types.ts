@@ -1,5 +1,5 @@
 import type { AirwallexEventDTO, ActivityItemDTO } from "@/contracts/activity";
-import type { EscrowLegDTO, MilestoneStatus, OfferStatus } from "@/contracts/offers";
+import type { ReleaseLegDTO, MilestoneStatus, OfferStatus } from "@/contracts/offers";
 import type { ProvisioningStep } from "@/contracts/users";
 import type { TransactionDTO } from "@/contracts/wallet";
 
@@ -44,7 +44,7 @@ export type MockMilestone = {
   breakdown: { sellerMinor: number; revenueMinor: number; reserveMinor: number; feeMinor: number };
   status: MilestoneStatus;
   deliveries: MockDelivery[];
-  escrowLegs: EscrowLegDTO[];
+  releaseLegs: ReleaseLegDTO[];
   approvedAt?: string;
   paidAt?: string;
   refundedAt?: string;

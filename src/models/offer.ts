@@ -64,7 +64,7 @@ const MilestoneSchema = new Schema(
     },
     status: { type: String, enum: MilestoneStatusSchema.options, required: true },
     deliveries: { type: [DeliverySchema], default: [] },
-    escrow: {
+    release: {
       sellerSplit: SplitRefSchema,
       revenueSplit: SplitRefSchema,
       refund: RefundRefSchema,
@@ -111,9 +111,9 @@ const OfferSchema = new Schema(
 
 OfferSchema.index({ buyerId: 1, status: 1, createdAt: -1 });
 OfferSchema.index({ sellerId: 1, status: 1, createdAt: -1 });
-OfferSchema.index({ "milestones.escrow.sellerSplit.splitId": 1 }, { sparse: true });
-OfferSchema.index({ "milestones.escrow.revenueSplit.splitId": 1 }, { sparse: true });
-OfferSchema.index({ "milestones.escrow.refund.refundId": 1 }, { sparse: true });
+OfferSchema.index({ "milestones.release.sellerSplit.splitId": 1 }, { sparse: true });
+OfferSchema.index({ "milestones.release.revenueSplit.splitId": 1 }, { sparse: true });
+OfferSchema.index({ "milestones.release.refund.refundId": 1 }, { sparse: true });
 OfferSchema.index({ seedKey: 1 }, { unique: true, sparse: true });
 
 export type OfferDocument = {
@@ -147,7 +147,7 @@ export type OfferDocument = {
       submittedAt: Date;
       review?: { decision: "APPROVED" | "CHANGES_REQUESTED"; comment?: string; reviewedAt: Date };
     }>;
-    escrow?: {
+    release?: {
       sellerSplit?: { splitId: string; amountMinor: number; destination: string; status: string };
       revenueSplit?: { splitId: string; amountMinor: number; destination: string; status: string };
       refund?: { refundId: string; status: string };

@@ -31,7 +31,7 @@ const STATUS_VISUAL = {
   PENDING_FUNDING: { label: "Awaiting funding", tone: "neutral", icon: Clock, spinner: false, muted: false },
   AWAITING_PAYMENT: { label: "Awaiting payment", tone: "warning", icon: Loader2, spinner: true, muted: false },
   ACTIVE: { label: "Active", tone: "info", icon: CircleDot, spinner: false, muted: false },
-  FUNDED: { label: "Held in escrow", tone: "info", icon: Lock, spinner: false, muted: false },
+  FUNDED: { label: "Awaiting release", tone: "info", icon: Lock, spinner: false, muted: false },
   SUBMITTED: { label: "Awaiting review", tone: "violet", icon: Inbox, spinner: false, muted: false },
   CHANGES_REQUESTED: { label: "Changes requested", tone: "warning", icon: RotateCcw, spinner: false, muted: false },
   RELEASING: { label: "Releasing…", tone: "warning", icon: Loader2, spinner: true, muted: false },

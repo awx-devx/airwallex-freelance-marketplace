@@ -106,23 +106,23 @@ describe("milestoneActions", () => {
       { kind: "FUNDS_SPLIT", share: "SELLER", status: "RELEASED" },
       { kind: "FUNDS_SPLIT", share: "REVENUE", status: "RELEASED" },
     ];
-    expect(cardReleaseAccepted({ status: "RELEASING", escrowLegs: released })).toBe(true);
-    expect(cardReleaseAccepted({ status: "RELEASING", escrowLegs: [{ kind: "FUNDS_SPLIT", share: "SELLER", status: "RELEASED" }] })).toBe(true);
+    expect(cardReleaseAccepted({ status: "RELEASING", releaseLegs: released })).toBe(true);
+    expect(cardReleaseAccepted({ status: "RELEASING", releaseLegs: [{ kind: "FUNDS_SPLIT", share: "SELLER", status: "RELEASED" }] })).toBe(true);
     expect(
       cardReleaseAccepted({
         status: "RELEASING",
-        escrowLegs: [
+        releaseLegs: [
           { kind: "FUNDS_SPLIT", share: "SELLER", status: "RELEASED" },
           { kind: "FUNDS_SPLIT", share: "REVENUE", status: "CREATED" },
         ],
       }),
     ).toBe(false);
-    expect(cardReleaseAccepted({ status: "RELEASING", escrowLegs: [] })).toBe(false);
-    expect(cardReleaseAccepted({ status: "PAID", escrowLegs: released })).toBe(false);
+    expect(cardReleaseAccepted({ status: "RELEASING", releaseLegs: [] })).toBe(false);
+    expect(cardReleaseAccepted({ status: "PAID", releaseLegs: released })).toBe(false);
     expect(
       cardReleaseAccepted({
         status: "RELEASING",
-        escrowLegs: [{ kind: "CA_TRANSFER", share: "SELLER", status: "PENDING" }],
+        releaseLegs: [{ kind: "CA_TRANSFER", share: "SELLER", status: "PENDING" }],
       }),
     ).toBe(false);
   });

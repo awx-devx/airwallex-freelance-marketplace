@@ -14,7 +14,7 @@ import { PlatformSettings } from "@/models/platformSettings";
 import { User, type UserDocument } from "@/models/user";
 import { WebhookEvent } from "@/models/webhookEvent";
 import { InvalidState } from "@/server/errors";
-import type { SplitGateway } from "@/services/escrow";
+import type { SplitGateway } from "@/services/release";
 import { cancelCardPayment, reconcileCardPayment, startCardPayment, type CardGateway } from "@/services/funding";
 import { createAndSend, getOffer } from "@/services/offers";
 import { dispatchWebhook } from "@/services/webhookHandlers";
@@ -140,7 +140,7 @@ describe("card funding", () => {
     expect(funded.status).toBe("ACTIVE");
     expect(funded.payment?.status).toBe("SUCCEEDED");
     expect(funded.milestones.map((milestone) => milestone.status)).toEqual(["FUNDED", "FUNDED"]);
-    expect(funded.milestones[0]?.escrowLegs.map((leg) => leg.airwallexId)).toEqual(["spt_SELLER", "spt_REVENUE"]);
+    expect(funded.milestones[0]?.releaseLegs.map((leg) => leg.airwallexId)).toEqual(["spt_SELLER", "spt_REVENUE"]);
     expect(held.calls).toEqual(["SELLER:9000:false", "REVENUE:800:false", "SELLER:4500:false", "REVENUE:400:false"]);
     const asSeller = await getOffer(seller, offer.id);
     expect(asSeller.milestones[0]?.allowedActions).toContain("SUBMIT_DELIVERY");

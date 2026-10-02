@@ -47,7 +47,7 @@ export function PayReturnScreen({ id }: { id: string }) {
       <div className="flex max-w-lg flex-col items-start gap-4 py-6">
         <h1 className="font-serif text-3xl font-medium tracking-tight">Payment received</h1>
         <p className="text-sm text-muted-foreground">
-          Payment received, {formatMoney(offer.total.amountMinor, offer.total.currency)} held in escrow.
+          Payment received, {formatMoney(offer.total.amountMinor, offer.total.currency)} awaiting release.
         </p>
         <Button type="button" variant="primary" onClick={() => router.push(`/offers/${id}`)}>
           View contract

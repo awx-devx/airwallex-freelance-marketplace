@@ -1,6 +1,6 @@
 # 05 — User Flows
 
-Each flow lists **UI**, **server**, **Airwallex**, and **DB** effects. Airwallex endpoint details are in [03-airwallex-integration.md](./03-airwallex-integration.md). Names like `escrow.approveMilestone` are **service functions**. The REST route that calls each one, and its request/response DTOs, are in [06-api-routes.md](./06-api-routes.md). The mock transport ([14](./14-frontend-architecture.md#4-mock-transport-srclibapimock--ui-first-development)) simulates the same transitions.
+Each flow lists **UI**, **server**, **Airwallex**, and **DB** effects. Airwallex endpoint details are in [03-airwallex-integration.md](./03-airwallex-integration.md). Names like `release.approveMilestone` are **service functions**. The REST route that calls each one, and its request/response DTOs, are in [06-api-routes.md](./06-api-routes.md). The mock transport ([14](./14-frontend-architecture.md#4-mock-transport-srclibapimock--ui-first-development)) simulates the same transitions.
 
 ---
 
@@ -99,21 +99,21 @@ No Airwallex calls happen yet.
    - Offer → `AWAITING_PAYMENT`.
    - Returns `{ intentId, clientSecret, currency }`.
 2. Buyer enters test card `4035 5010 0000 0008`. Drop-in confirms directly with Airwallex.
-3. On `success`, navigate to `/offers/[id]/pay/return`. That page calls `funding.reconcileCardPayment(offerId)`, which retrieves the PI; if `SUCCEEDED`, it calls `escrow.onFundingSucceeded(offerId)`.
-4. Independently, webhook `payment_intent.succeeded` calls the same `escrow.onFundingSucceeded(offerId)`. **Whichever arrives first wins.** The other becomes a no-op.
-5. `escrow.onFundingSucceeded`:
+3. On `success`, navigate to `/offers/[id]/pay/return`. That page calls `funding.reconcileCardPayment(offerId)`, which retrieves the PI; if `SUCCEEDED`, it calls `release.onFundingSucceeded(offerId)`.
+4. Independently, webhook `payment_intent.succeeded` calls the same `release.onFundingSucceeded(offerId)`. **Whichever arrives first wins.** The other becomes a no-op.
+5. `release.onFundingSucceeded`:
    - Payment → `SUCCEEDED`.
    - For each milestone: create seller split and revenue split (`auto_release: false`, deterministic request IDs, `metadata = { offerId, milestoneId, share }`). Milestone → `FUNDED`.
    - Offer → `ACTIVE`, `fundedAt`, activity `PAYMENT_SUCCEEDED` + `SPLITS_CREATED`.
-6. The return page shows "Payment received — $1,000 is held in escrow" and links back to the offer.
+6. The return page shows "Payment received — $1,000 awaiting release" and links back to the offer.
 
 If the payment fails (`payment_intent.payment_failed` or a Drop-in `error`), the payment → `FAILED` and the offer → `SENT` so the buyer can retry.
 
 ### Wallet rail
 
-1. `funding.payFromWallet(offerId)`: guard as above; check the buyer CA `available_amount`. Switching to the wallet tab does not cancel the card PaymentIntent, and coming back reuses it. Clicking **Pay from wallet** cancels that unused intent (`POST /pa/payment_intents/{id}/cancel`, request id `picancel:{paymentId}`) only once the balance is enough, then `POST /charges/create` with `source = buyerCA`, `request_id = ch:{offerId}`, `reference = Escrow funding {shortRef}`. `reason` is the enum `professional_business_services` (the API rejects free text). If the card intent has already succeeded, the card funding path finishes and the wallet is not charged. A low balance leaves the card intent in place.
+1. `funding.payFromWallet(offerId)`: guard as above; check the buyer CA `available_amount`. Switching to the wallet tab does not cancel the card PaymentIntent, and coming back reuses it. Clicking **Pay from wallet** cancels that unused intent (`POST /pa/payment_intents/{id}/cancel`, request id `picancel:{paymentId}`) only once the balance is enough, then `POST /charges/create` with `source = buyerCA`, `request_id = ch:{offerId}`, `reference = Marketplace funding {shortRef}`. `reason` is the enum `professional_business_services` (the API rejects free text). If the card intent has already succeeded, the card funding path finishes and the wallet is not charged. A low balance leaves the card intent in place.
 2. Offer → `AWAITING_PAYMENT`. The UI shows "Processing…" and polls `/api/offers/[id]/sync`.
-3. Webhook `charge.settled` (or sync retrieving the charge) calls `escrow.onFundingSucceeded(offerId)`. For the wallet rail, this just marks milestones `FUNDED`. Escrow is the platform balance; no splits are created.
+3. Webhook `charge.settled` (or sync retrieving the charge) calls `release.onFundingSucceeded(offerId)`. For the wallet rail, this just marks milestones `FUNDED`. The unreleased amount is the platform wallet balance; no splits are created.
 
 ### Decline
 
@@ -137,7 +137,7 @@ No Airwallex calls happen.
 
 ### Approve
 
-**Server (`escrow.approveMilestone`):**
+**Server (`release.approveMilestone`):**
 
 1. Conditional update: milestone `SUBMITTED` → `RELEASING`; set `delivery.review`; `approvedAt`.
 2. **Card rail:** `POST /pa/funds_splits/{sellerSplitId}/release` and `.../{revenueSplitId}/release` (request IDs `fsr:{splitId}`). Update split statuses from the responses (`RELEASED`).
@@ -159,7 +159,7 @@ Milestone → `CHANGES_REQUESTED`, review comment saved. The seller sees the com
 
 **UI:** a **Cancel milestone** action on unreleased milestones. The confirm dialog names where the money returns: the buyer reads "$X will be refunded to your card" on the card rail, or "your wallet" on the wallet rail; the seller reads "$X will be refunded to {buyer}'s card" or wallet. **Cancel remaining** uses the same destination for every unreleased milestone.
 
-**Server (`escrow.refundMilestone`):**
+**Server (`release.refundMilestone`):**
 
 1. Conditional update → `REFUNDING`.
 2. **Card rail:**
@@ -176,7 +176,7 @@ Milestone → `CHANGES_REQUESTED`, review comment saved. The seller sees the com
 **UI:** `/wallet`
 
 - **Balances** per currency (available, pending, total) from `GET /balances/current` (on behalf of the user's CA).
-- **Escrow summary** from our DB: "Held for you (incoming as seller): $X" and "Held from you (as buyer): $Y".
+- **Unreleased totals** from our DB: "Held for you (incoming as seller): $X" and "Held from you (as buyer): $Y".
 - **Transactions** from `GET /balances/history` (on behalf of the user), shown with type, amount, and date. Map types like `TRANSFER`, `CHARGE`, `SPLIT`, `PAYOUT` to friendly labels.
 - **Airwallex account card:** `acct_...` ID, status, and a "View raw" toggle (demo transparency).
 - **Withdraw to bank:** `POST /api/wallet/withdrawals` creates a local USD transfer (`POST /api/v1/transfers/create`, `x-on-behalf-of` the user's CA) to a shared sandbox ACH beneficiary. The amount is checked against the available balance first.

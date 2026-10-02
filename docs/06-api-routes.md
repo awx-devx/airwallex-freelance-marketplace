@@ -118,7 +118,7 @@ type DeliveryDTO = {
   review?: { decision: 'APPROVED' | 'CHANGES_REQUESTED'; comment?: string; reviewedAt: string };
 };
 
-type EscrowLegDTO = {                 // a Funds Split (card rail) or CA Transfer (wallet rail)
+type ReleaseLegDTO = {                 // a Funds Split (card rail) or CA Transfer (wallet rail)
   kind: 'FUNDS_SPLIT' | 'CA_TRANSFER' | 'REFUND';
   share: 'SELLER' | 'REVENUE' | 'BUYER_REFUND';
   airwallexId: string;                // spt_..., transfer id, rfd_...
@@ -137,7 +137,7 @@ type MilestoneDTO = {
   status: MilestoneStatus;
   isPending: boolean;                 // RELEASING | REFUNDING, so the UI shows a spinner and polls
   deliveries: DeliveryDTO[];          // newest last
-  escrowLegs: EscrowLegDTO[];
+  releaseLegs: ReleaseLegDTO[];
   allowedActions: MilestoneAction[];
   approvedAt?: string; paidAt?: string; refundedAt?: string;
   lastError?: string;                 // shown on *_FAILED or stuck states
@@ -202,7 +202,7 @@ type OfferDTO = Omit<OfferSummaryDTO, 'counterparty'> & {
       "id": "m1", "index": 0, "title": "Moodboard", "amount": { "amountMinor": 30000, "currency": "USD" },
       "breakdown": { "seller": { "amountMinor": 27000, "currency": "USD" }, "revenue": { "amountMinor": 2400, "currency": "USD" }, "reserve": { "amountMinor": 600, "currency": "USD" }, "fee": { "amountMinor": 3000, "currency": "USD" } },
       "status": "PAID", "isPending": false, "deliveries": [], "allowedActions": [],
-      "escrowLegs": [
+      "releaseLegs": [
         { "kind": "FUNDS_SPLIT", "share": "SELLER", "airwallexId": "spt_hkpd1k27vg1xc7u", "amount": { "amountMinor": 27000, "currency": "USD" }, "status": "SETTLED" },
         { "kind": "FUNDS_SPLIT", "share": "REVENUE", "airwallexId": "spt_hkpd1k27vg1xc8a", "amount": { "amountMinor": 2400, "currency": "USD" }, "status": "SETTLED" }
       ],
@@ -247,7 +247,7 @@ type BalanceDTO = { currency: string; available: MoneyDTO; pending: MoneyDTO; re
 type WalletDTO = {
   account: { accountId: string; status: string; label: string };   // "Airwallex connected account (sandbox)"
   balances: BalanceDTO[];
-  escrow: { heldAsBuyer: MoneyDTO; incomingAsSeller: MoneyDTO };
+  unreleased: { heldAsBuyer: MoneyDTO; incomingAsSeller: MoneyDTO };
 };
 
 type TransactionDTO = {
@@ -351,7 +351,7 @@ type CreateOfferInput = {
 | Method | Path | Body | → |
 | --- | --- | --- | --- |
 | POST | `/api/offers/:id/payments/card` | – | `CardPaymentSessionDTO` (creates or reuses PI; offer → `AWAITING_PAYMENT`) |
-| POST | `/api/offers/:id/payments/reconcile` | – | `OfferDTO` (retrieves PI; funds escrow if succeeded) |
+| POST | `/api/offers/:id/payments/reconcile` | – | `OfferDTO` (retrieves PI; creates unreleased splits if succeeded) |
 | POST | `/api/offers/:id/payments/cancel` | – | `OfferDTO` (back to `SENT`) |
 | POST | `/api/offers/:id/payments/wallet` | – | `OfferDTO` (`AWAITING_PAYMENT`; errors `INSUFFICIENT_BALANCE`) |
 
@@ -385,7 +385,7 @@ When `DEMO_ADMIN_KEY` is set, the two GETs return `403 FORBIDDEN` until `POST /a
 ```ts
 // src/app/api/offers/[id]/milestones/[mid]/approve/route.ts
 export const POST = route({}, async ({ user, params }) => {
-  const offer = await escrow.approveMilestone({ actorId: user.id, offerId: params.id, milestoneId: params.mid });
+  const offer = await release.approveMilestone({ actorId: user.id, offerId: params.id, milestoneId: params.mid });
   return toOfferDTO(offer, user.id);           // src/server/dto/offers.ts computes allowedActions
 });
 ```

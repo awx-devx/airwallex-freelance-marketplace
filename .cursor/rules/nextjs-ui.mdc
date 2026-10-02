@@ -57,4 +57,4 @@ Spec: `docs/09-ui-pages.md` § Responsiveness. Check 375, 768, and 1024+.
 - `@airwallex/components-sdk` only (not `airwallex-payment-elements`). `init({ env: 'demo', enabledElements: ['payments'] })`, mount the Drop-in **before** attaching listeners, and pass only `intent_id`, `client_secret`, and `currency` to the client. In mock mode render `MockCardForm` instead.
 
 ## Copy
-- "held in escrow" (funded), "released" (approved), "paid" (settled). Always show the fee split. Label payment screens as sandbox/demo. Buttons name outcome and amount.
+- "awaiting release" (funded), "released" (approved), "paid" (settled). Always show the fee split. Label payment screens as sandbox/demo. Buttons name outcome and amount.

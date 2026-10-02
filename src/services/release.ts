@@ -165,7 +165,7 @@ export async function onFundingSucceeded(offerId: string, gateway: SplitGateway 
       {
         $set: {
           "milestones.$.status": "FUNDED",
-          "milestones.$.escrow.sellerSplit": {
+          "milestones.$.release.sellerSplit": {
             splitId: sellerSplitId,
             amountMinor: milestone.breakdown.sellerMinor,
             destination: sellerAccount,
@@ -173,7 +173,7 @@ export async function onFundingSucceeded(offerId: string, gateway: SplitGateway 
           },
           ...(revenue && revenueId && revenueStatus
             ? {
-                "milestones.$.escrow.revenueSplit": {
+                "milestones.$.release.revenueSplit": {
                   splitId: revenueId,
                   amountMinor: milestone.breakdown.revenueMinor,
                   destination: revenueAccount,
@@ -201,7 +201,7 @@ export async function onFundingSucceeded(offerId: string, gateway: SplitGateway 
   );
   if (!activated) return;
   await note(offerId, "PAYMENT_SUCCEEDED", "Payment received by card", offer.buyerId.toString());
-  await note(offerId, "SPLITS_CREATED", "Funds held in escrow", offer.buyerId.toString());
+  await note(offerId, "SPLITS_CREATED", "Funds awaiting release", offer.buyerId.toString());
 }
 
 async function fundWalletMilestones(offerId: string): Promise<void> {
@@ -236,30 +236,30 @@ export async function advanceSplitStatus(splitId: string, next: string): Promise
   const status = knownSplitStatus(next);
   if (!status) return undefined;
   const offer = await Offer.findOne({
-    $or: [{ "milestones.escrow.sellerSplit.splitId": splitId }, { "milestones.escrow.revenueSplit.splitId": splitId }],
+    $or: [{ "milestones.release.sellerSplit.splitId": splitId }, { "milestones.release.revenueSplit.splitId": splitId }],
   });
   if (!offer) return undefined;
   const touched: OfferDocument["milestones"][number][] = [];
   for (const milestone of offer.milestones) {
-    const seller = milestone.escrow?.sellerSplit;
+    const seller = milestone.release?.sellerSplit;
     if (seller?.splitId === splitId && canAdvanceSplit(seller.status, status)) {
       await Offer.updateOne(
         {
           _id: offer._id,
-          milestones: { $elemMatch: { "escrow.sellerSplit.splitId": splitId, "escrow.sellerSplit.status": seller.status } },
+          milestones: { $elemMatch: { "release.sellerSplit.splitId": splitId, "release.sellerSplit.status": seller.status } },
         },
-        { $set: { "milestones.$.escrow.sellerSplit.status": status } },
+        { $set: { "milestones.$.release.sellerSplit.status": status } },
       );
       touched.push(milestone);
     }
-    const revenue = milestone.escrow?.revenueSplit;
+    const revenue = milestone.release?.revenueSplit;
     if (revenue?.splitId === splitId && canAdvanceSplit(revenue.status, status)) {
       await Offer.updateOne(
         {
           _id: offer._id,
-          milestones: { $elemMatch: { "escrow.revenueSplit.splitId": splitId, "escrow.revenueSplit.status": revenue.status } },
+          milestones: { $elemMatch: { "release.revenueSplit.splitId": splitId, "release.revenueSplit.status": revenue.status } },
         },
-        { $set: { "milestones.$.escrow.revenueSplit.status": status } },
+        { $set: { "milestones.$.release.revenueSplit.status": status } },
       );
       touched.push(milestone);
     }
@@ -277,7 +277,7 @@ export async function refreshSplits(offerId: string, gateway: SplitGateway = liv
   const offer = await Offer.findById(offerId);
   if (!offer) return;
   for (const milestone of offer.milestones) {
-    for (const splitId of [milestone.escrow?.sellerSplit?.splitId, milestone.escrow?.revenueSplit?.splitId]) {
+    for (const splitId of [milestone.release?.sellerSplit?.splitId, milestone.release?.revenueSplit?.splitId]) {
       if (!splitId) continue;
       const latest = await gateway.retrieveFundsSplit(splitId);
       const status = readString(latest, "status");
@@ -323,10 +323,10 @@ export async function maybeMarkPaid(offerId: string): Promise<void> {
     if (milestone.status !== "RELEASING") continue;
     const sellerSettled =
       offer.fundingRail === "WALLET"
-        ? milestone.escrow?.sellerTransfer?.status === "SETTLED"
-        : milestone.escrow?.sellerSplit?.status === "SETTLED";
-    const revenueTransfer = milestone.escrow?.revenueTransfer;
-    const revenueSplit = milestone.escrow?.revenueSplit;
+        ? milestone.release?.sellerTransfer?.status === "SETTLED"
+        : milestone.release?.sellerSplit?.status === "SETTLED";
+    const revenueTransfer = milestone.release?.revenueTransfer;
+    const revenueSplit = milestone.release?.revenueSplit;
     const revenueSettled =
       milestone.breakdown.revenueMinor === 0 ||
       (offer.fundingRail === "WALLET" ? revenueTransfer?.status === "SETTLED" : revenueSplit?.status === "SETTLED");
@@ -344,7 +344,7 @@ async function releaseHeldSplits(offerId: string, milestoneId: string, gateway: 
   const offer = await Offer.findById(offerId);
   const milestone = offer?.milestones.find((item) => item._id.toString() === milestoneId);
   if (!offer || !milestone) return;
-  const splitIds = [milestone.escrow?.sellerSplit?.splitId, milestone.escrow?.revenueSplit?.splitId].filter(
+  const splitIds = [milestone.release?.sellerSplit?.splitId, milestone.release?.revenueSplit?.splitId].filter(
     (splitId): splitId is string => Boolean(splitId),
   );
   try {
@@ -509,9 +509,9 @@ async function attachRefund(
   const attached = await Offer.findOneAndUpdate(
     {
       _id: offerId,
-      milestones: { $elemMatch: { _id: milestoneId, status: "REFUNDING", "escrow.refund.refundId": { $exists: false } } },
+      milestones: { $elemMatch: { _id: milestoneId, status: "REFUNDING", "release.refund.refundId": { $exists: false } } },
     },
-    { $set: { "milestones.$.escrow.refund": { refundId, status } } },
+    { $set: { "milestones.$.release.refund": { refundId, status } } },
   );
   if (!attached) return;
   const payment = await Payment.findOne({ offerId, rail: "CARD", status: "SUCCEEDED" }).sort({ attempt: -1 });
@@ -523,24 +523,24 @@ export async function advanceRefundStatus(refundId: string, next: string, milest
   await connectDb();
   const status = knownRefundStatus(next);
   if (!status) return undefined;
-  let offer = await Offer.findOne({ "milestones.escrow.refund.refundId": refundId });
+  let offer = await Offer.findOne({ "milestones.release.refund.refundId": refundId });
   if (!offer && milestoneId && Types.ObjectId.isValid(milestoneId)) {
     offer = await Offer.findOne({ "milestones._id": milestoneId });
   }
   if (!offer) return undefined;
   const milestone = offer.milestones.find(
-    (item) => item.escrow?.refund?.refundId === refundId || (milestoneId !== undefined && item._id.toString() === milestoneId),
+    (item) => item.release?.refund?.refundId === refundId || (milestoneId !== undefined && item._id.toString() === milestoneId),
   );
   if (!milestone) return offer._id.toString();
-  if (!milestone.escrow?.refund?.refundId) {
+  if (!milestone.release?.refund?.refundId) {
     await attachRefund(offer._id.toString(), milestone._id, refundId, status, milestone.amountMinor);
-  } else if (canAdvanceRefund(milestone.escrow.refund.status, status)) {
+  } else if (canAdvanceRefund(milestone.release.refund.status, status)) {
     await Offer.updateOne(
       {
         _id: offer._id,
-        milestones: { $elemMatch: { "escrow.refund.refundId": refundId, "escrow.refund.status": milestone.escrow.refund.status } },
+        milestones: { $elemMatch: { "release.refund.refundId": refundId, "release.refund.status": milestone.release.refund.status } },
       },
-      { $set: { "milestones.$.escrow.refund.status": status } },
+      { $set: { "milestones.$.release.refund.status": status } },
     );
   }
   if (status === "FAILED") await markRefundFailed(offer._id.toString(), milestone._id, "The refund failed.");
@@ -566,11 +566,11 @@ async function reverseSplit(
     const reversalId = readString(reversal, "id");
     if (!reversalId) return;
     await Offer.updateOne(
-      { _id: offerId, milestones: { $elemMatch: { _id: milestoneId, [`escrow.${side}.splitId`]: split.splitId } } },
+      { _id: offerId, milestones: { $elemMatch: { _id: milestoneId, [`release.${side}.splitId`]: split.splitId } } },
       {
         $set: {
-          [`milestones.$.escrow.${side}.reversalId`]: reversalId,
-          [`milestones.$.escrow.${side}.reversalStatus`]: readString(reversal, "status") ?? "RECEIVED",
+          [`milestones.$.release.${side}.reversalId`]: reversalId,
+          [`milestones.$.release.${side}.reversalStatus`]: readString(reversal, "status") ?? "RECEIVED",
         },
       },
     );
@@ -601,8 +601,8 @@ async function executeRefund(offerId: string, milestoneId: string, gateway: Refu
     const status = readString(created, "status") ?? "RECEIVED";
     await attachRefund(offerId, milestone._id, refundId, status, milestone.amountMinor);
     for (const [side, split] of [
-      ["sellerSplit", milestone.escrow?.sellerSplit],
-      ["revenueSplit", milestone.escrow?.revenueSplit],
+      ["sellerSplit", milestone.release?.sellerSplit],
+      ["revenueSplit", milestone.release?.revenueSplit],
     ] as const) {
       if (!split) continue;
       await reverseSplit(offerId, milestone._id, side, split, offer.currency, gateway);
@@ -691,7 +691,7 @@ export async function refreshRefunds(offerId: string, gateway: RefundGateway = l
   const offer = await Offer.findById(offerId);
   if (!offer) return;
   for (const milestone of offer.milestones) {
-    const refundId = milestone.escrow?.refund?.refundId;
+    const refundId = milestone.release?.refund?.refundId;
     if (!refundId || milestone.status !== "REFUNDING") continue;
     const latest = await gateway.retrieveRefund(refundId);
     const status = readString(latest, "status");
@@ -720,8 +720,8 @@ async function storeTransfer(
   transfer: { transferId: string; amountMinor: number; destination: string; status: string },
 ): Promise<void> {
   await Offer.updateOne(
-    { _id: offerId, milestones: { $elemMatch: { _id: milestoneId, [`escrow.${side}.transferId`]: { $exists: false } } } },
-    { $set: { [`milestones.$.escrow.${side}`]: transfer } },
+    { _id: offerId, milestones: { $elemMatch: { _id: milestoneId, [`release.${side}.transferId`]: { $exists: false } } } },
+    { $set: { [`milestones.$.release.${side}`]: transfer } },
   );
 }
 
@@ -731,22 +731,22 @@ export async function advanceTransferStatus(transferId: string, next: string): P
   if (!status) return undefined;
   const offer = await Offer.findOne({
     $or: [
-      { "milestones.escrow.sellerTransfer.transferId": transferId },
-      { "milestones.escrow.revenueTransfer.transferId": transferId },
-      { "milestones.escrow.refundTransfer.transferId": transferId },
+      { "milestones.release.sellerTransfer.transferId": transferId },
+      { "milestones.release.revenueTransfer.transferId": transferId },
+      { "milestones.release.refundTransfer.transferId": transferId },
     ],
   });
   if (!offer) return undefined;
   for (const milestone of offer.milestones) {
     for (const side of ["sellerTransfer", "revenueTransfer", "refundTransfer"] as const) {
-      const current = milestone.escrow?.[side];
+      const current = milestone.release?.[side];
       if (current?.transferId !== transferId || !canAdvanceTransfer(current.status, status)) continue;
       await Offer.updateOne(
         {
           _id: offer._id,
-          milestones: { $elemMatch: { [`escrow.${side}.transferId`]: transferId, [`escrow.${side}.status`]: current.status } },
+          milestones: { $elemMatch: { [`release.${side}.transferId`]: transferId, [`release.${side}.status`]: current.status } },
         },
-        { $set: { [`milestones.$.escrow.${side}.status`]: status } },
+        { $set: { [`milestones.$.release.${side}.status`]: status } },
       );
       if ((side === "sellerTransfer" || side === "revenueTransfer") && (status === "FAILED" || status === "SUSPENDED")) {
         await markReleaseFailed(offer._id.toString(), milestone._id, "The wallet transfer did not settle.");
@@ -871,9 +871,9 @@ export async function refreshTransfers(offerId: string, gateway: TransferGateway
   for (const milestone of offer.milestones) {
     if (milestone.status !== "RELEASING" && milestone.status !== "REFUNDING") continue;
     const ids = [
-      milestone.escrow?.sellerTransfer?.transferId,
-      milestone.escrow?.revenueTransfer?.transferId,
-      milestone.escrow?.refundTransfer?.transferId,
+      milestone.release?.sellerTransfer?.transferId,
+      milestone.release?.revenueTransfer?.transferId,
+      milestone.release?.refundTransfer?.transferId,
     ];
     for (const transferId of ids) {
       if (!transferId) continue;

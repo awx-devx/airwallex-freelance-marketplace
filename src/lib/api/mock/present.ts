@@ -56,7 +56,7 @@ function milestoneDto(offer: MockOffer, milestone: MockMilestone, userId: string
     status: milestone.status,
     isPending: milestoneIsPending(milestone.status),
     deliveries: milestone.deliveries,
-    escrowLegs: milestone.escrowLegs,
+    releaseLegs: milestone.releaseLegs,
     allowedActions: milestoneActions(milestone, offer, viewerRole),
     approvedAt: milestone.approvedAt,
     paidAt: milestone.paidAt,

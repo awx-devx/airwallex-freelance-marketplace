@@ -139,21 +139,21 @@ Small standalone `tsx` scripts in `scripts/spike/`, sharing the real `src/lib/ai
 
 - `services/funding.ts` card rail; routes `payments/card`, `payments/reconcile`, `payments/cancel`.
 - `DropInCheckout` in real mode (replaces `MockCardForm`).
-- Webhook route, `webhook_events`, dispatcher; `escrow.onFundingSucceeded` creating held splits.
+- Webhook route, `webhook_events`, dispatcher; `release.onFundingSucceeded` creating held splits.
 - `POST /offers/:id/sync`, `GET /offers/:id/airwallex-events`.
 
-**Demo:** buyer pays by card; milestones show "Held in escrow" with real `spt_` IDs.
+**Demo:** buyer pays by card; milestones show "Awaiting release" with real `spt_` IDs.
 
 ### B5 — Approval and release
 
-- `escrow.approveMilestone`, `funds_split.*` handlers, `maybeMarkPaid`, offer completion; `approve` + `retry` routes.
+- `release.approveMilestone`, `funds_split.*` handlers, `maybeMarkPaid`, offer completion; `approve` + `retry` routes.
 - `GET /api/wallet/transactions`.
 
 **Demo:** full happy path; seller balance and Revenue account increase.
 
 ### B6 — Cancellation and refunds
 
-- `escrow.refundMilestone` / `cancelRemaining`; `refund.*` handlers; `cancel` + `cancel-remaining` routes.
+- `release.refundMilestone` / `cancelRemaining`; `refund.*` handlers; `cancel` + `cancel-remaining` routes.
 
 **Demo:** cancel a milestone; buyer refunded.
 
@@ -183,7 +183,7 @@ Small standalone `tsx` scripts in `scripts/spike/`, sharing the real `src/lib/ai
 | Hooks | Query/mutation behaviour, cache updates, `useOfferSync` stop conditions | Vitest + RTL against the mock transport |
 | Components | Visual review on `/dev/ui-kit`; RTL tests for `MilestoneCard` action rendering | Manual + Vitest |
 | Webhook | Signature verification (known vector), idempotency (duplicate event), out-of-order events | Vitest with an in-memory Mongo (`mongodb-memory-server`) |
-| Services | Escrow transitions with a mocked Airwallex client | Vitest |
+| Services | Release transitions with a mocked Airwallex client | Vitest |
 | Contract parity | Route handlers return the same DTO shapes as mocks | Response zod validation in dev + optional hook tests against the real transport |
 | End to end | Happy path + refund against the real sandbox | Manual script in the runbook; optional Playwright later |
 

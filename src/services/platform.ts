@@ -20,20 +20,20 @@ function money(amountMinor: number, currency: string) {
 function releaseSettling(milestone: {
   status: string;
   lastError?: string;
-  escrow?: {
+  release?: {
     sellerSplit?: { status: string };
     revenueSplit?: { status: string };
   };
 }): boolean {
   if (milestone.status !== "RELEASING" || milestone.lastError) return false;
-  const escrowLegs = [];
-  if (milestone.escrow?.sellerSplit) {
-    escrowLegs.push({ kind: "FUNDS_SPLIT", share: "SELLER", status: milestone.escrow.sellerSplit.status });
+  const releaseLegs = [];
+  if (milestone.release?.sellerSplit) {
+    releaseLegs.push({ kind: "FUNDS_SPLIT", share: "SELLER", status: milestone.release.sellerSplit.status });
   }
-  if (milestone.escrow?.revenueSplit) {
-    escrowLegs.push({ kind: "FUNDS_SPLIT", share: "REVENUE", status: milestone.escrow.revenueSplit.status });
+  if (milestone.release?.revenueSplit) {
+    releaseLegs.push({ kind: "FUNDS_SPLIT", share: "REVENUE", status: milestone.release.revenueSplit.status });
   }
-  return cardReleaseAccepted({ status: "RELEASING", escrowLegs });
+  return cardReleaseAccepted({ status: "RELEASING", releaseLegs });
 }
 
 /**

@@ -1,4 +1,4 @@
-# <img src="public/logo.svg" alt="" width="28" height="23" style="width: 28px; height: 23px; vertical-align: middle;"> Freelance Escrow Demo
+# <img src="public/logo.svg" alt="" width="28" height="23" style="width: 28px; height: 23px; vertical-align: middle;"> Freelance Marketplace Demo
 
 <p>
   <a href="https://nextjs.org/"><img alt="Next.js" src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white"></a>
@@ -11,6 +11,8 @@
 ## What this is
 
 A seller sends a milestone offer. The buyer pays the whole offer up front. Each milestone’s funds are held, then released only when the buyer approves that milestone.
+
+This is a milestone-based manual release, not funds held in an escrow. Each milestone’s Funds Split is created with `auto_release: false` and released only when the buyer approves that milestone.
 
 Everything runs on one Airwallex **sandbox** platform account. Every user gets an Airwallex connected account with a wallet. This is a demo, not a production system: shortcuts are tagged in code and listed in [docs/10-demo-vs-production.md](docs/10-demo-vs-production.md). Product scope is in [docs/01-product-overview.md](docs/01-product-overview.md).
 

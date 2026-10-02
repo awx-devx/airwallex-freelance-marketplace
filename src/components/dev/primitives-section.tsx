@@ -516,7 +516,7 @@ function CalloutSection() {
     <KitSection id="callout" title="Alert and Callout" note="Info, success, warning, and danger. An action sits on the right.">
       {(["info", "success", "warning", "danger"] as const).map((tone) => (
         <Variant key={tone} caption={`Callout / ${tone}`}>
-          <Callout tone={tone} title={tone === "info" ? "Held in escrow" : tone}>
+          <Callout tone={tone} title={tone === "info" ? "Awaiting release" : tone}>
             {tone === "success" ? "Milestone paid." : "Sandbox payment. No real money moves."}
           </Callout>
         </Variant>

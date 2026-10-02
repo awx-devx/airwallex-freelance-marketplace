@@ -1,5 +1,5 @@
 import { route } from "@/server/http";
-import { approveMilestone } from "@/services/escrow";
+import { approveMilestone } from "@/services/release";
 
 export const runtime = "nodejs";
 

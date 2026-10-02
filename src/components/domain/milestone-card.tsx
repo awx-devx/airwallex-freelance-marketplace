@@ -11,7 +11,7 @@ import { releasedAwaitingSettlement } from "@/components/domain/status";
 import { StatusPill } from "@/components/domain/status-pill";
 import { DeliveryForm } from "@/components/domain/delivery-form";
 import { DeliveryView } from "@/components/domain/delivery-view";
-import { EscrowLegList } from "@/components/domain/escrow-leg-list";
+import { ReleaseLegList } from "@/components/domain/release-leg-list";
 import { ReviewActions } from "@/components/domain/review-actions";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -85,7 +85,7 @@ export function MilestoneCard({
               ? "Released to you. Airwallex settles this to your wallet later, often the next day. You can leave this page."
               : `Released to ${payeeName}. Airwallex settles this to their wallet later, often the next day. You can leave this page.`}
           </p>
-          <EscrowLegList legs={milestone.escrowLegs} />
+          <ReleaseLegList legs={milestone.releaseLegs} />
           <Button type="button" variant="outline" size="sm" onClick={() => onSync?.()}>
             Sync
           </Button>
@@ -110,7 +110,7 @@ export function MilestoneCard({
           {viewerRole === "SELLER" ? "Paid to you" : `Paid to ${payeeName}`} · {formatDay(milestone.paidAt)}
         </p>
       ) : null}
-      {milestone.status === "PAID" || milestone.status === "REFUNDED" ? <EscrowLegList legs={milestone.escrowLegs} /> : null}
+      {milestone.status === "PAID" || milestone.status === "REFUNDED" ? <ReleaseLegList legs={milestone.releaseLegs} /> : null}
       {latest && (canReview || milestone.status === "CHANGES_REQUESTED" || milestone.status === "PAID") ? (
         <DeliveryView delivery={latest} />
       ) : null}

@@ -44,7 +44,7 @@ export function MockCardForm({
   }
 
   if (shown === "success") {
-    return <p className="text-sm">Payment received. {formatMoney(amount.amountMinor, amount.currency)} will be held in escrow.</p>;
+    return <p className="text-sm">Payment received. {formatMoney(amount.amountMinor, amount.currency)} is awaiting release.</p>;
   }
 
   return (

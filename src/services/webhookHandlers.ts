@@ -3,7 +3,7 @@ import { extractAccountId, extractObject } from "@/lib/airwallex/webhooks";
 import { connectDb } from "@/lib/db";
 import { Payment } from "@/models/payment";
 import { User } from "@/models/user";
-import { advanceRefundStatus, advanceSplitStatus, advanceTransferStatus, markCardPaymentFailed, onFundingSucceeded, type SplitGateway } from "@/services/escrow";
+import { advanceRefundStatus, advanceSplitStatus, advanceTransferStatus, markCardPaymentFailed, onFundingSucceeded, type SplitGateway } from "@/services/release";
 import { markWalletChargeFailed } from "@/services/funding";
 
 const ACCOUNT_STATUS = {

@@ -1,5 +1,5 @@
 import { airwallexContext } from "./context";
-import { AirwallexError } from "./errors";
+import { AirwallexError, isDuplicateRequest } from "./errors";
 import { loadAirwallexEnv, type AirwallexConfig } from "./env";
 import { asObject, readString, type JsonObject } from "./json";
 import { redact } from "./redact";
@@ -284,7 +284,7 @@ export async function createResource(
   try {
     return await request<JsonObject>("POST", path, { ...options, body });
   } catch (error) {
-    if (!(error instanceof AirwallexError) || error.code !== "duplicate_request") throw error;
+    if (!isDuplicateRequest(error)) throw error;
     try {
       const existing = await recover();
       if (existing) return existing;

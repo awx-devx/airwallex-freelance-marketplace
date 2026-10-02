@@ -2,7 +2,7 @@ import { createSeedDb } from "@/lib/api/mock/fixtures";
 import { resetMockJobs } from "@/lib/api/mock/simulate";
 import type { MockDb, MockFault, ScenarioId } from "@/lib/api/mock/types";
 
-const STORAGE_KEY = "awx-escrow.mock.v1";
+const STORAGE_KEY = "awx-marketplace.mock.v1";
 
 let db: MockDb | undefined;
 let faults: MockFault[] = [];

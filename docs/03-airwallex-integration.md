@@ -81,7 +81,7 @@ That create is not usable here yet. `connected_account_id` was rejected for both
 | --- | --- | --- |
 | Buyer pays with | Sandbox test card via Drop-in element | Their CA wallet balance |
 | Funding call | PaymentIntent (+ Drop-in confirm) | `POST /api/v1/charges/create` (buyer CA → platform) |
-| Where escrow sits | Held Funds Splits (`auto_release: false`) | Platform wallet balance (our DB tracks it per milestone) |
+| Where unreleased funds sit | Held Funds Splits (`auto_release: false`) | Platform wallet balance (our DB tracks it per milestone) |
 | Release call | `POST /api/v1/pa/funds_splits/{id}/release` | `POST /api/v1/connected_account_transfers/create` (platform → seller CA) |
 | Refund call | Funds Split Reversal + `POST /api/v1/pa/refunds/create` | CA Transfer back to buyer CA |
 | Showcases | Payment acceptance, Funds Split, delayed release, Refunds | Connected accounts, Charges, CA Transfers |
@@ -163,8 +163,8 @@ sequenceDiagram
 
 "A Funds Split can be created only after the Payment Intent succeeds **and before funds settlement**." ([Create a Funds Split](https://www.airwallex.com/docs/api/payments/funds_splits/create.md)). The sandbox default settlement is back-to-back with 0-day delay, so:
 
-- Create splits **immediately** when `payment_intent.succeeded` arrives, or from the return-page fallback, whichever comes first. Both call the same idempotent `escrow.createHeldSplits(offerId)`.
-- **Do not** use `funds_split_data` on PaymentIntent create. Splits created that way are **automatically released** after success, which defeats the escrow.
+- Create splits **immediately** when `payment_intent.succeeded` arrives, or from the return-page fallback, whichever comes first. Both call the same idempotent `release.onFundingSucceeded(offerId)`.
+- **Do not** use `funds_split_data` on PaymentIntent create. Splits created that way are **automatically released** after success, which releases each milestone before the buyer approves.
 - A held split stayed `CREATED` for the short spike window. Whether it can stay held for days or weeks is still unknown (R4).
 
 ### Card rail: refund / cancel
@@ -193,7 +193,7 @@ sequenceDiagram
   S->>AX: POST /charges/create {source: buyerCA, amount: total, currency, reason, reference}
   AX-->>S: {status: NEW/PENDING}
   AX-)S: webhook charge.settled
-  S->>S: all milestones → FUNDED (escrow = platform wallet)
+  S->>S: all milestones → FUNDED (platform wallet tracks the milestone)
 
   B->>S: Approve milestone k
   S->>AX: POST /connected_account_transfers/create {destination: sellerCA, amount: sellerShare}
@@ -235,7 +235,7 @@ The create body is `accountCreateBody` in `scripts/seed-data/identity-fixture.ts
 | --- | --- | --- |
 | Balances | `GET /api/v1/balances/current` with `x-on-behalf-of: {userCA}` | Core |
 | Transaction history | `GET /api/v1/balances/history` with `x-on-behalf-of` | Core |
-| Escrow summary | Our DB: sum of `FUNDED`/`SUBMITTED` milestones as buyer ("held") and as seller ("incoming") | Core |
+| Unreleased totals | Our DB: sum of `FUNDED`/`SUBMITTED` milestones as buyer ("held") and as seller ("incoming") | Core |
 | Withdraw to bank | `POST /api/v1/transfers/create` with an inline beneficiary and `x-on-behalf-of` | Shared sandbox ACH account. See [Create a transfer](https://www.airwallex.com/docs/payments-for-platforms/pay-out-funds/create-a-transfer.md). |
 | Send to another user | Charge (sender CA → platform) then CA Transfer (platform → recipient CA) | Waits for the charge to settle. If the transfer fails, the amount is transferred back to the sender. |
 | Top up (simulated deposit) | Global Account on behalf of CA + `POST /api/v1/simulation/deposit/create` | Stretch. Requires Global Accounts capability. |
@@ -254,7 +254,7 @@ All paths are relative to `https://api.sandbox.airwallex.com`. All calls use `Au
 | Create PaymentIntent | `POST /api/v1/pa/payment_intents/create` | – (omit `connected_account_id` on this sandbox) | card funding |
 | Retrieve PaymentIntent | `GET /api/v1/pa/payment_intents/{id}` | – | return page, sync |
 | Cancel PaymentIntent | `POST /api/v1/pa/payment_intents/{id}/cancel` | – | wallet pay replaces an unused card checkout |
-| Create Funds Split | `POST /api/v1/pa/funds_splits/create` | – | escrow |
+| Create Funds Split | `POST /api/v1/pa/funds_splits/create` | – | release |
 | Release Funds Split | `POST /api/v1/pa/funds_splits/{id}/release` | – | approve |
 | Retrieve Funds Split | `GET /api/v1/pa/funds_splits/{id}` | – | sync |
 | List Funds Splits | `GET /api/v1/pa/funds_splits` | – | sync, platform page |

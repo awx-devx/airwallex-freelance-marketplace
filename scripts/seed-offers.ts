@@ -1,7 +1,7 @@
 import type { OfferDTO } from "@/contracts/offers";
 import { Offer } from "@/models/offer";
 import { User, type UserDocument } from "@/models/user";
-import { approveMilestone, refundMilestone } from "@/services/escrow";
+import { approveMilestone, refundMilestone } from "@/services/release";
 import { payFromWallet, syncOffer } from "@/services/funding";
 import { createAndSend, submitDelivery } from "@/services/offers";
 import { SEED_OFFERS, type SeedOfferSpec } from "./seed-data/offers";

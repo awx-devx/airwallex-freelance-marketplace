@@ -38,7 +38,10 @@ export class AirwallexError extends Error {
 }
 
 export function isDuplicateRequest(error: unknown): error is AirwallexError {
-  return error instanceof AirwallexError && error.code === "duplicate_request";
+  if (!(error instanceof AirwallexError)) return false;
+  if (error.code === "duplicate_request") return true;
+  // Connected-account transfers report a reused request_id as invalid_argument, not duplicate_request.
+  return /request_id '.+' has been used in the past/i.test(error.message);
 }
 
 export function formatUnknownError(error: unknown): string {

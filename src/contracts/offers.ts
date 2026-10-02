@@ -73,14 +73,14 @@ export const DeliverySchema = z.object({
 });
 export type DeliveryDTO = z.infer<typeof DeliverySchema>;
 
-export const EscrowLegSchema = z.object({
+export const ReleaseLegSchema = z.object({
   kind: z.enum(["FUNDS_SPLIT", "CA_TRANSFER", "REFUND"]),
   share: z.enum(["SELLER", "REVENUE", "BUYER_REFUND"]),
   airwallexId: z.string().min(1),
   amount: NonNegativeMoneySchema,
   status: z.string().min(1),
 });
-export type EscrowLegDTO = z.infer<typeof EscrowLegSchema>;
+export type ReleaseLegDTO = z.infer<typeof ReleaseLegSchema>;
 
 export const MilestoneSchema = z.object({
   id: z.string().min(1),
@@ -93,7 +93,7 @@ export const MilestoneSchema = z.object({
   status: MilestoneStatusSchema,
   isPending: z.boolean(),
   deliveries: z.array(DeliverySchema),
-  escrowLegs: z.array(EscrowLegSchema),
+  releaseLegs: z.array(ReleaseLegSchema),
   allowedActions: z.array(MilestoneActionSchema),
   approvedAt: IsoDateTimeSchema.optional(),
   paidAt: IsoDateTimeSchema.optional(),

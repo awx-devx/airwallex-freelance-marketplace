@@ -13,7 +13,7 @@ import { User, type UserDocument } from "@/models/user";
 import { WebhookEvent } from "@/models/webhookEvent";
 import type { JsonObject } from "@/lib/airwallex/json";
 import { InsufficientBalance, InvalidState } from "@/server/errors";
-import { approveMilestone, refundMilestone, type SplitGateway, type TransferGateway } from "@/services/escrow";
+import { approveMilestone, refundMilestone, type SplitGateway, type TransferGateway } from "@/services/release";
 import { payFromWallet, type CardGateway, type WalletGateway } from "@/services/funding";
 import { createAndSend, submitDelivery } from "@/services/offers";
 import { platformOverview } from "@/services/platform";
@@ -186,7 +186,7 @@ describe("wallet funding", () => {
     expect(funded?.status).toBe("ACTIVE");
     expect(funded?.fundingRail).toBe("WALLET");
     expect(funded?.milestones.map((milestone) => milestone.status)).toEqual(["FUNDED", "FUNDED"]);
-    expect(funded?.milestones.every((milestone) => !milestone.escrow?.sellerSplit && !milestone.escrow?.revenueSplit)).toBe(true);
+    expect(funded?.milestones.every((milestone) => !milestone.release?.sellerSplit && !milestone.release?.revenueSplit)).toBe(true);
     const notes = await Activity.find({ offerId: offer.id, type: "PAYMENT_SUCCEEDED" });
     expect(notes.map((note) => note.message)).toContain("Payment received from wallet");
   });
@@ -288,7 +288,7 @@ describe("wallet release and refund", () => {
     expect(gateway.calls).toEqual([{ amountMinor: 10000, destination: "acct_buyer", requestId: gateway.calls[0]?.requestId }]);
     expect(cancelled.status).toBe("CANCELLED");
     expect(cancelled.milestones[0]?.status).toBe("REFUNDED");
-    expect(cancelled.milestones[0]?.escrowLegs).toEqual([
+    expect(cancelled.milestones[0]?.releaseLegs).toEqual([
       expect.objectContaining({ kind: "CA_TRANSFER", share: "BUYER_REFUND", status: "SETTLED" }),
     ]);
   });

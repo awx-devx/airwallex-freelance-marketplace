@@ -14,7 +14,7 @@ import { PlatformSettings } from "@/models/platformSettings";
 import { User, type UserDocument } from "@/models/user";
 import { Activity } from "@/models/activity";
 import { Forbidden, InsufficientBalance, InvalidState, NotFound } from "@/server/errors";
-import { markCardPaymentFailed, onFundingSucceeded, refreshRefunds, refreshSplits, refreshTransfers, type SplitGateway, type TransferGateway } from "@/services/escrow";
+import { markCardPaymentFailed, onFundingSucceeded, refreshRefunds, refreshSplits, refreshTransfers, type SplitGateway, type TransferGateway } from "@/services/release";
 import { getOffer } from "@/services/offers";
 import { mapBalances } from "@/services/wallet";
 
@@ -291,7 +291,7 @@ export async function payFromWallet(
     source: accountId,
     requestId: chargeRequestId(offer._id.toString()),
     reason: "professional_business_services",
-    reference: `Escrow funding ${offer.shortRef}`,
+    reference: `Marketplace funding ${offer.shortRef}`,
     relatedOfferId: offer._id.toString(),
   });
   const chargeId = readString(created, "id");

@@ -1,6 +1,6 @@
-# Airwallex Freelance Escrow — Demo Documentation
+# Airwallex Freelance Marketplace — Demo Documentation
 
-A demo freelance marketplace where a **seller** sends a milestone-based offer to a **buyer**, the buyer funds it up front, and each milestone's money is **held by Airwallex and released to the seller only after the buyer approves that milestone**.
+A demo freelance marketplace where a **seller** sends a milestone-based offer to a **buyer**, the buyer funds it up front, and each milestone's Funds Split stays unreleased (`auto_release: false`) until the buyer approves that milestone.
 
 Everything runs on **one Airwallex sandbox account** (the "platform"). Every user who signs up gets their own **Airwallex connected account** (a real sandbox financial account with a wallet), which is where released funds land and where users can see balances and move money.
 
@@ -11,7 +11,7 @@ Everything runs on **one Airwallex sandbox account** (the "platform"). Every use
 | Concern | How it works in this demo |
 | --- | --- |
 | Payment acceptance | Buyer pays the **whole offer** once, via an Airwallex **PaymentIntent** rendered with the **Drop-in element** (sandbox test cards). |
-| Holding funds | On `payment_intent.succeeded`, the server creates one **Funds Split per milestone per destination** with `auto_release: false`. Funds stay held. |
+| Unreleased funds | On `payment_intent.succeeded`, the server creates one **Funds Split per milestone per destination** with `auto_release: false`. Each split stays unreleased until the buyer approves that milestone. |
 | Release on approval | When the buyer approves a milestone, the server calls **Release a Funds Split** for that milestone's splits. |
 | Platform fee | Each milestone is split three ways: seller share, a seeded **Platform Revenue** connected account, and a small unsplit remainder left on the platform account to absorb Airwallex processing fees. |
 | Refunds | Cancelling an unreleased milestone **reverses** its splits (Funds Split Reversal) and issues a **partial Refund** on the PaymentIntent. |

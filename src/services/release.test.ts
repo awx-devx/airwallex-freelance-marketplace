@@ -13,7 +13,7 @@ import { Payment } from "@/models/payment";
 import { PlatformSettings } from "@/models/platformSettings";
 import { User, type UserDocument } from "@/models/user";
 import { InvalidState } from "@/server/errors";
-import { approveMilestone, cancelRemaining, refundMilestone, retryMilestone, type RefundGateway, type ReleaseGateway, type SplitGateway } from "@/services/escrow";
+import { approveMilestone, cancelRemaining, refundMilestone, retryMilestone, type RefundGateway, type ReleaseGateway, type SplitGateway } from "@/services/release";
 import { startCardPayment, reconcileCardPayment, type CardGateway } from "@/services/funding";
 import { createAndSend, submitDelivery } from "@/services/offers";
 import { dispatchWebhook } from "@/services/webhookHandlers";
@@ -132,12 +132,12 @@ describe("approval and release", () => {
 
     const releasing = await approveMilestone(buyer, offerId, first._id.toString(), gateway);
     expect(releasing.milestones[0]?.status).toBe("RELEASING");
-    expect(releasing.milestones[0]?.escrowLegs.map((leg) => leg.status)).toEqual(["RELEASED", "RELEASED"]);
-    expect(gateway.releases).toEqual([first.escrow?.sellerSplit?.splitId, first.escrow?.revenueSplit?.splitId]);
+    expect(releasing.milestones[0]?.releaseLegs.map((leg) => leg.status)).toEqual(["RELEASED", "RELEASED"]);
+    expect(gateway.releases).toEqual([first.release?.sellerSplit?.splitId, first.release?.revenueSplit?.splitId]);
     expect(releasing.status).toBe("ACTIVE");
 
-    const sellerSplit = first.escrow?.sellerSplit?.splitId ?? "";
-    const revenueSplit = first.escrow?.revenueSplit?.splitId ?? "";
+    const sellerSplit = first.release?.sellerSplit?.splitId ?? "";
+    const revenueSplit = first.release?.revenueSplit?.splitId ?? "";
     await dispatchWebhook({
       id: "evt_seller",
       name: "funds_split.settled",
@@ -161,12 +161,12 @@ describe("approval and release", () => {
     await dispatchWebhook({
       id: "evt_seller_2",
       name: "funds_split.settled",
-      data: { object: { id: second.escrow?.sellerSplit?.splitId, status: "SETTLED" } },
+      data: { object: { id: second.release?.sellerSplit?.splitId, status: "SETTLED" } },
     });
     const completed = await dispatchWebhook({
       id: "evt_revenue_2",
       name: "funds_split.settled",
-      data: { object: { id: second.escrow?.revenueSplit?.splitId, status: "SETTLED" } },
+      data: { object: { id: second.release?.revenueSplit?.splitId, status: "SETTLED" } },
     });
     expect(completed).toBe(offerId);
     const done = await Offer.findById(offerId);
@@ -178,7 +178,7 @@ describe("approval and release", () => {
     const { seller, buyer, offerId } = await fundedOffer();
     const funded = await Offer.findById(offerId);
     const first = funded?.milestones[0];
-    if (!first?.escrow?.sellerSplit) throw new Error("missing split");
+    if (!first?.release?.sellerSplit) throw new Error("missing split");
     await deliver(seller, offerId, first._id.toString());
 
     const failing = rails({ failRelease: true });
@@ -190,12 +190,12 @@ describe("approval and release", () => {
     const recovered = await retryMilestone(buyer, offerId, first._id.toString(), rails());
     expect(recovered.milestones[0]?.status).toBe("RELEASING");
     expect(recovered.milestones[0]?.lastError).toBeUndefined();
-    expect(recovered.milestones[0]?.escrowLegs.map((leg) => leg.status)).toEqual(["RELEASED", "RELEASED"]);
+    expect(recovered.milestones[0]?.releaseLegs.map((leg) => leg.status)).toEqual(["RELEASED", "RELEASED"]);
 
     await dispatchWebhook({
       id: "evt_failed",
       name: "funds_split.failed",
-      data: { object: { id: first.escrow.sellerSplit.splitId, status: "FAILED" } },
+      data: { object: { id: first.release.sellerSplit.splitId, status: "FAILED" } },
     });
     const failed = await Offer.findById(offerId);
     expect(failed?.milestones[0]?.status).toBe("RELEASE_FAILED");
@@ -232,7 +232,7 @@ describe("cancellation and refunds", () => {
 
     const refunding = await refundMilestone(seller, offerId, first._id.toString(), { reason: "Scope changed" }, gateway);
     expect(refunding.milestones[0]?.status).toBe("REFUNDING");
-    expect(refunding.milestones[0]?.escrowLegs.some((leg) => leg.kind === "REFUND" && leg.airwallexId === `rfd_${first._id.toString()}`)).toBe(true);
+    expect(refunding.milestones[0]?.releaseLegs.some((leg) => leg.kind === "REFUND" && leg.airwallexId === `rfd_${first._id.toString()}`)).toBe(true);
     expect(gateway.reversals).toBe(2);
     expect(refunding.status).toBe("ACTIVE");
     const payment = await Payment.findOne({ offerId });
@@ -273,6 +273,6 @@ describe("cancellation and refunds", () => {
     const recovered = await retryMilestone(buyer, offerId, first._id.toString(), undefined, cardRefunds());
     expect(recovered.milestones[0]?.status).toBe("REFUNDING");
     expect(recovered.milestones[0]?.lastError).toBeUndefined();
-    expect(recovered.milestones[0]?.escrowLegs.some((leg) => leg.kind === "REFUND")).toBe(true);
+    expect(recovered.milestones[0]?.releaseLegs.some((leg) => leg.kind === "REFUND")).toBe(true);
   });
 });

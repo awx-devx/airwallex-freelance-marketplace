@@ -1,9 +1,9 @@
 import type { OfferDTO } from "@/contracts/offers";
 import { Money } from "@/components/domain/money";
 
-export function EscrowSummary({ totals }: { totals: OfferDTO["totals"] }) {
+export function ReleaseSummary({ totals }: { totals: OfferDTO["totals"] }) {
   const rows = [
-    ["Held in escrow", totals.held],
+    ["Awaiting release", totals.held],
     ["Released", totals.released],
     ["Refunded", totals.refunded],
   ] as const;

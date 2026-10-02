@@ -1,6 +1,6 @@
 import { CancelReasonInputSchema } from "@/contracts/offers";
 import { route } from "@/server/http";
-import { refundMilestone } from "@/services/escrow";
+import { refundMilestone } from "@/services/release";
 
 export const runtime = "nodejs";
 

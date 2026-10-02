@@ -30,18 +30,18 @@ Spec: https://www.conventionalcommits.org/en/v1.0.0/
 ```
 
 Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `build`, `ci`, `perf`, `style`, `revert`.
-Breaking changes: `feat(escrow)!: ...` and/or a `BREAKING CHANGE:` footer.
+Breaking changes: `feat(release)!: ...` and/or a `BREAKING CHANGE:` footer.
 
-Scopes: `auth`, `airwallex`, `provisioning`, `offers`, `funding`, `escrow`, `fees`, `webhooks`, `wallet`, `platform`, `db`, `seed`, `spike`, `ui`, `config`, `deps`, `docs`, `rules`.
+Scopes: `auth`, `airwallex`, `provisioning`, `offers`, `funding`, `release`, `fees`, `webhooks`, `wallet`, `platform`, `db`, `seed`, `spike`, `ui`, `config`, `deps`, `docs`, `rules`.
 
 ## Examples
 ```
-feat(escrow): create held funds splits on payment success
+feat(release): create unreleased funds splits on payment success
 fix(webhooks): verify signature against raw request body
 test(fees): cover rounding for 3-way milestone breakdown
 docs(risks): record R3 findings from held-split spike
 chore(deps): add @airwallex/components-sdk
-revert: feat(escrow): create held funds splits on payment success
+revert: feat(release): create unreleased funds splits on payment success
 
 Refs: 1a2b3c4
 ```

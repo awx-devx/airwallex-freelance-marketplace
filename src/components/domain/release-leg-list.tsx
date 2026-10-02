@@ -1,4 +1,4 @@
-import type { EscrowLegDTO } from "@/contracts/offers";
+import type { ReleaseLegDTO } from "@/contracts/offers";
 import { Money } from "@/components/domain/money";
 import { Badge } from "@/components/ui/badge";
 
@@ -14,8 +14,8 @@ const KIND_LABEL = {
   REFUND: "Refund",
 } as const;
 
-export function EscrowLegList({ legs }: { legs: EscrowLegDTO[] }) {
-  if (legs.length === 0) return <p className="text-sm text-muted-foreground">No escrow legs yet.</p>;
+export function ReleaseLegList({ legs }: { legs: ReleaseLegDTO[] }) {
+  if (legs.length === 0) return <p className="text-sm text-muted-foreground">No payment legs yet.</p>;
 
   return (
     <ul className="flex flex-col gap-2">

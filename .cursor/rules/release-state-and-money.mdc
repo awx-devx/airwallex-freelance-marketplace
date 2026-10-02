@@ -1,10 +1,10 @@
 ---
-description: Escrow state machines, fee math, and safe state transitions for offers and milestones
+description: Milestone release state machines, fee math, and safe state transitions for offers and milestones
 globs: src/services/**,src/models/**,src/lib/money.ts
 alwaysApply: false
 ---
 
-# Escrow State and Money
+# Release State and Money
 
 State machines are defined in `docs/04-data-model.md`. Implement them exactly; update the doc first if they need to change.
 

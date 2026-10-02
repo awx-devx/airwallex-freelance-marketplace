@@ -17,7 +17,7 @@ export const WalletSchema = z.object({
     label: z.string().min(1),
   }),
   balances: z.array(BalanceSchema),
-  escrow: z.object({
+  unreleased: z.object({
     heldAsBuyer: NonNegativeMoneySchema,
     incomingAsSeller: NonNegativeMoneySchema,
   }),

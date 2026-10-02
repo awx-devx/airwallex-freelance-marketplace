@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import type { MilestoneAction, OfferAction } from "@/contracts/offers";
 import { ActivityTimeline } from "@/components/domain/activity-timeline";
 import { AirwallexActivityPanel } from "@/components/domain/airwallex-activity-panel";
-import { EscrowSummary } from "@/components/domain/escrow-summary";
+import { ReleaseSummary } from "@/components/domain/release-summary";
 import { FeeBreakdown } from "@/components/domain/fee-breakdown";
 import { MilestoneCard } from "@/components/domain/milestone-card";
 import { OfferActionBar } from "@/components/domain/offer-action-bar";
@@ -106,7 +106,7 @@ export function OfferScreen({ id }: { id: string }) {
       <OfferHeader offer={offer} />
       {offer.description ? <p className="max-w-2xl text-sm text-muted-foreground">{offer.description}</p> : null}
       <OfferActionBar offer={offer} pendingAction={pendingAction} onAction={onOfferAction} />
-      <EscrowSummary totals={offer.totals} />
+      <ReleaseSummary totals={offer.totals} />
       <FeeBreakdown variant="card" value={offer.totals.fees} />
       <div className="flex flex-col gap-3">
         {offer.milestones.map((milestone) => (
