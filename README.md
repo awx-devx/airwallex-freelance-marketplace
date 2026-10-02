@@ -25,7 +25,7 @@ Next.js App Router, MongoDB via Mongoose, Tailwind CSS and shadcn/ui. Airwallex 
 Replit imports this repo and publishes the Next.js server. MongoDB stays on Atlas. Full sandbox setup and troubleshooting are in [docs/11-setup-and-runbook.md](docs/11-setup-and-runbook.md).
 
 1. Create a MongoDB Atlas cluster. Allow Replit’s egress (`0.0.0.0/0` is the usual sandbox choice) and copy `MONGODB_URI`.
-2. Import the repo: [replit.com/github/HeimLabs/airwallex-freelance-escrow](https://replit.com/github/HeimLabs/airwallex-freelance-escrow).
+2. Import the repo: [replit.com/github/awx-devx/airwallex-freelance-escrow](https://replit.com/github/awx-devx/airwallex-freelance-escrow).
 3. Set secrets in **both** the workspace Secrets tool and the deployment’s Secrets. Workspace secrets are not copied into a deployment. `NEXT_PUBLIC_*` must be present at build time.
 4. For a real demo set `NEXT_PUBLIC_API_MOCKS=false`, `NEXT_PUBLIC_AIRWALLEX_ENV=demo`, `APP_URL=https://<slug>.replit.app`, plus `MONGODB_URI`, a `SESSION_SECRET` of 32+ characters, and the Airwallex keys from [`.env.example`](.env.example).
 5. Publish. Autoscale (the `.replit` default) can scale to zero and miss a webhook on a cold start. Choose a **Reserved VM** if webhooks must land while the app is idle. The in-app Sync action recovers a missed webhook.

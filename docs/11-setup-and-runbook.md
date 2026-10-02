@@ -61,7 +61,7 @@ Without a tunnel, the app falls back to polling via the sync endpoint.
 The repo includes a [`.replit`](../.replit) file. Replit imports the GitHub repo and runs `npm run build`, then `npm run start` on `0.0.0.0` and `PORT` (mapped from local 3000 to external 80). Mongo stays on **MongoDB Atlas**. Replit has no MongoDB.
 
 1. **Atlas.** Create a cluster and a database user. Set `MONGODB_URI` to that connection string. Allow Replit’s egress in Atlas Network Access (`0.0.0.0/0` is the usual sandbox choice).
-2. **Import.** Open `https://replit.com/github/HeimLabs/airwallex-freelance-escrow`, or use [replit.com/import](https://replit.com/import) and choose the GitHub repo.
+2. **Import.** Open `https://replit.com/github/awx-devx/airwallex-freelance-escrow`, or use [replit.com/import](https://replit.com/import) and choose the GitHub repo.
 3. **Secrets, in two places.** Add every variable in the workspace **Secrets** tool and again under the deployment’s **Secrets**. Workspace secrets are not copied into a deployment. `NEXT_PUBLIC_*` must be set before the deployment **build**; Next inlines them at build time. Boot fails without `MONGODB_URI` and a `SESSION_SECRET` of 32+ characters.
 4. **Values for a real demo.**
    - `NEXT_PUBLIC_API_MOCKS=false` (a production build refuses mocks unless `ALLOW_MOCKS_IN_PROD=true`)
