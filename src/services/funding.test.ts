@@ -15,9 +15,9 @@ import { User, type UserDocument } from "@/models/user";
 import { WebhookEvent } from "@/models/webhookEvent";
 import { InvalidState } from "@/server/errors";
 import type { SplitGateway } from "@/services/release";
-import { cancelCardPayment, reconcileCardPayment, startCardPayment, type CardGateway } from "@/services/funding";
+import { cancelCardPayment, reconcileCardPayment, startCardPayment, type CardGateway, type CardRefundGateway } from "@/services/funding";
 import { createAndSend, getOffer } from "@/services/offers";
-import { dispatchWebhook } from "@/services/webhookHandlers";
+import { dispatchWebhook, type WebhookLookup } from "@/services/webhookHandlers";
 import { POST as webhook } from "@/app/api/webhooks/airwallex/route";
 
 let mongo: MongoMemoryServer;
@@ -60,9 +60,10 @@ async function readyUser(email: string, name: string, accountId: string): Promis
   });
 }
 
-function cards(status = "REQUIRES_PAYMENT_METHOD"): CardGateway & { created: number } {
+function cards(status = "REQUIRES_PAYMENT_METHOD"): CardGateway & { created: number; cancelled: string[] } {
   const gateway = {
     created: 0,
+    cancelled: [] as string[],
     async createPaymentIntent() {
       gateway.created += 1;
       return {
@@ -75,10 +76,33 @@ function cards(status = "REQUIRES_PAYMENT_METHOD"): CardGateway & { created: num
       return { id, status } satisfies JsonObject;
     },
     async cancelPaymentIntent(id: string) {
+      gateway.cancelled.push(id);
       return { id, status: "CANCELLED" } satisfies JsonObject;
     },
   };
   return gateway;
+}
+
+function confirmedLookup(status = "SUCCEEDED"): WebhookLookup {
+  return {
+    async retrievePaymentIntent(id: string) {
+      return { id, status };
+    },
+    async retrieveCharge(id: string) {
+      return { id, status: "SETTLED" };
+    },
+  };
+}
+
+function refunds(): CardRefundGateway & { calls: string[] } {
+  const calls: string[] = [];
+  return {
+    calls,
+    async createRefund(input) {
+      calls.push(input.requestId);
+      return { id: `rfd_${input.requestId}`, status: "RECEIVED" };
+    },
+  };
 }
 
 function splits(): SplitGateway & { calls: string[] } {
@@ -156,9 +180,49 @@ describe("card funding", () => {
     expect(declined.fundingRail).toBeUndefined();
 
     await startCardPayment(buyer, offer.id, gateway);
-    const cancelled = await cancelCardPayment(buyer, offer.id);
+    const cancelled = await cancelCardPayment(buyer, offer.id, gateway);
     expect(cancelled.status).toBe("SENT");
-    await expect(cancelCardPayment(buyer, offer.id)).rejects.toBeInstanceOf(InvalidState);
+    expect(gateway.cancelled).toEqual(["int_2"]);
+    await expect(cancelCardPayment(buyer, offer.id, gateway)).rejects.toBeInstanceOf(InvalidState);
+  });
+
+  it("funds the offer when cancel finds the PaymentIntent already succeeded", async () => {
+    const { buyer, offer } = await sentOffer();
+    const held = splits();
+    await startCardPayment(buyer, offer.id, cards());
+    const paid = cards("SUCCEEDED");
+    const funded = await cancelCardPayment(buyer, offer.id, paid, held);
+    expect(funded.status).toBe("ACTIVE");
+    expect(paid.cancelled).toEqual([]);
+    expect(held.calls).toHaveLength(4);
+  });
+
+  it("refunds a capture that lands after checkout was cancelled", async () => {
+    const { buyer, offer } = await sentOffer();
+    const gateway = cards();
+    const held = splits();
+    const returning = refunds();
+    const session = await startCardPayment(buyer, offer.id, gateway);
+    const cancelled = await cancelCardPayment(buyer, offer.id, gateway);
+    expect(cancelled.status).toBe("SENT");
+
+    await dispatchWebhook(
+      {
+        id: "evt_late",
+        name: "payment_intent.succeeded",
+        data: { object: { id: session.intentId, status: "SUCCEEDED", metadata: { offerId: offer.id } } },
+      },
+      held,
+      confirmedLookup(),
+      returning,
+    );
+    const synced = await reconcileCardPayment(buyer, offer.id, cards("SUCCEEDED"), held, returning);
+    expect(synced.status).toBe("SENT");
+    expect(held.calls).toEqual([]);
+    expect(returning.calls).toEqual([expect.stringMatching(/^rf:cancel:/)]);
+    const payment = await Payment.findOne({ offerId: offer.id });
+    expect(payment?.status).toBe("CANCELLED");
+    expect(payment?.refundedMinor).toBe(15_000);
   });
 
   it("funds from the payment webhook once and rejects a bad signature", async () => {
@@ -170,10 +234,14 @@ describe("card funding", () => {
       name: "payment_intent.succeeded",
       data: { object: { id: session.intentId, status: "SUCCEEDED", metadata: { offerId: offer.id } } },
     };
-    await dispatchWebhook(event, held);
-    await dispatchWebhook(event, held);
+    const lookup = confirmedLookup();
+    await dispatchWebhook(event, held, lookup);
+    await dispatchWebhook(event, held, lookup);
     const funded = await getOffer(buyer, offer.id);
     expect(funded.status).toBe("ACTIVE");
+    expect(held.calls).toHaveLength(4);
+
+    await dispatchWebhook(event, held, confirmedLookup("REQUIRES_PAYMENT_METHOD"));
     expect(held.calls).toHaveLength(4);
 
     const raw = JSON.stringify({ id: "evt_ping", name: "ping" });
@@ -204,5 +272,48 @@ describe("card funding", () => {
       }),
     );
     expect(bad.status).toBe(400);
+  });
+
+  it("rejects a webhook signed only with client-secret-key unless the test flag is on", async () => {
+    const raw = JSON.stringify({ id: "evt_test_sig", name: "ping" });
+    const timestamp = String(Date.now());
+    const testSecret = "attacker-secret";
+    const signature = createHmac("sha256", testSecret).update(timestamp + raw).digest("hex");
+    const headers = { "x-timestamp": timestamp, "x-signature": signature, "client-secret-key": testSecret };
+    const forged = await webhook(new Request("http://localhost/api/webhooks/airwallex", { method: "POST", headers, body: raw }));
+    expect(forged.status).toBe(400);
+
+    const env = process.env as Record<string, string | undefined>;
+    env.AIRWALLEX_ALLOW_WEBHOOK_TEST_SIGNATURES = "true";
+    const previousEnv = env.NODE_ENV;
+    try {
+      const allowed = await webhook(new Request("http://localhost/api/webhooks/airwallex", { method: "POST", headers, body: raw }));
+      expect(allowed.status).toBe(200);
+
+      env.NODE_ENV = "production";
+      const production = await webhook(new Request("http://localhost/api/webhooks/airwallex", { method: "POST", headers, body: raw }));
+      expect(production.status).toBe(400);
+    } finally {
+      env.NODE_ENV = previousEnv;
+      delete env.AIRWALLEX_ALLOW_WEBHOOK_TEST_SIGNATURES;
+    }
+  });
+
+  it("does not fund an offer when the retrieved PaymentIntent is not succeeded", async () => {
+    const { buyer, offer } = await sentOffer();
+    const held = splits();
+    const session = await startCardPayment(buyer, offer.id, cards());
+    await dispatchWebhook(
+      {
+        id: "evt_unpaid",
+        name: "payment_intent.succeeded",
+        data: { object: { id: session.intentId, status: "SUCCEEDED", metadata: { offerId: offer.id } } },
+      },
+      held,
+      confirmedLookup("REQUIRES_PAYMENT_METHOD"),
+    );
+    const waiting = await getOffer(buyer, offer.id);
+    expect(waiting.status).toBe("AWAITING_PAYMENT");
+    expect(held.calls).toEqual([]);
   });
 });

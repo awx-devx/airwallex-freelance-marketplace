@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Menu, X } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import type { BalanceDTO } from "@/contracts/wallet";
@@ -46,12 +46,13 @@ export function TopBar({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [openOnPath, setOpenOnPath] = useState<string | null>(null);
+  const menuOpen = openOnPath === pathname;
   const label = walletLabel(balance);
 
-  useEffect(() => {
-    setMenuOpen(false);
-  }, [pathname]);
+  function setMenuOpen(open: boolean) {
+    setOpenOnPath(open ? pathname : null);
+  }
 
   function go(href: string) {
     setMenuOpen(false);

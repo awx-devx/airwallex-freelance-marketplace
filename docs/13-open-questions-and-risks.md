@@ -13,6 +13,8 @@ The backend can start. Two card-rail constraints are not feasible on this accoun
 
 `connected_account_id` on PaymentIntent create is also rejected (`not enabled for payment acceptance`) for both the individual seller and the business account. A PaymentIntent with no `connected_account_id` can be paid and then split to the business account, so that field is not required for the hold-and-release test. Platform `payments_visa` and `payments_mastercard` are still `PENDING`. Native card confirm is disabled; Drop-in and the Hosted Payment Page work.
 
+**Cancelling an unpaid PaymentIntent (checked 2026-10-07).** Create returned `REQUIRES_PAYMENT_METHOD`. `POST /pa/payment_intents/{id}/cancel` returned `CANCELLED`, and a later retrieve stayed `CANCELLED`, so the intent is no longer payable. A follow-up `confirm` with the test card was rejected (`400 validation_error`, native API access disabled). That same confirm error happens on a payable intent (R12), so it does not add evidence beyond the `CANCELLED` status. Checkout cancel still refunds a capture that wins the race.
+
 | ID | Question / risk | Impact if wrong | Mitigation / fallback |
 | --- | --- | --- | --- |
 | **R1** | **Platform capabilities.** Connected accounts, Charges, CA Transfers, platform PaymentIntents, and Funds Splits are enabled. `connected_account_id` on PaymentIntent create is rejected until the named account is enabled for payment acceptance. Splits to individual accounts require gateway model 2.1. | Card-rail tagging stays blocked. Individual destinations cannot receive splits. | Omit `connected_account_id`. Create every CA as `BUSINESS`, including seed users and the fee account. |

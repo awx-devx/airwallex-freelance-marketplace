@@ -46,7 +46,7 @@ Gotchas from the Airwallex docs:
 
 - Use the **raw** body string (`await req.text()`). Don't `JSON.parse` and re-stringify before hashing.
 - Use `x-timestamp` exactly as received.
-- **Test events** sent from the web app are signed with the secret in the `client-secret-key` header of the test payload, not your endpoint secret. `// DEMO-ONLY:` Accept that header only when `NODE_ENV !== 'production'`.
+- **Test events** sent from the web app are signed with the secret in the `client-secret-key` header of the test payload, not your endpoint secret. `// DEMO-ONLY:` Accept that header only when `AIRWALLEX_ALLOW_WEBHOOK_TEST_SIGNATURES=true` and `NODE_ENV` is not `production`. The flag is off by default, and production ignores it. `// PROD:` Verify only with `AIRWALLEX_WEBHOOK_SECRET`.
 - Each webhook URL has its own secret.
 
 ## Route handler
@@ -98,11 +98,11 @@ Log the first real payload of each event type during the spike and adjust the no
 
 | Event | Lookup | Action |
 | --- | --- | --- |
-| `payment_intent.succeeded` | `payments.paymentIntentId = obj.id` (fallback: `obj.metadata.offerId`) | `release.onFundingSucceeded(offerId)` |
+| `payment_intent.succeeded` | Retrieve the PaymentIntent first. Continue only when Airwallex reports `SUCCEEDED`. Then `payments.paymentIntentId = obj.id` | `funding.onConfirmedCardIntent`: fund while checkout is open, or refund the full amount if the buyer already cancelled |
 | `payment_intent.payment_failed` / `.cancelled` | same | payment `FAILED`/`CANCELLED`; offer → `SENT` if still `AWAITING_PAYMENT` |
 | `funds_split.created` / `.released` / `.settled` / `.failed` | `milestones.release.{seller,revenue}Split.splitId = obj.id` | Update split status; `release.maybeMarkPaid(offerId, milestoneId)` on settled; `RELEASE_FAILED` on failed |
 | `refund.*` | `milestones.release.refund.refundId = obj.id` (fallback: `obj.metadata.milestoneId`) | Update refund status; `REFUNDED` on accepted/settled; `REFUND_FAILED` on failed |
-| `charge.settled` / `.failed` / `.suspended` | `payments.chargeId = obj.id` | Wallet funding success/failure |
+| `charge.settled` / `.failed` / `.suspended` | Retrieve the charge first. `charge.settled` continues only when Airwallex reports `SETTLED`. Lookup is `payments.chargeId = obj.id` | Wallet funding success/failure |
 | `connected_account_transfer.*` | Welcome credit (`request_id` prefix `welcome:`), or milestone `release.*Transfer.transferId` | Update transfer; `maybeMarkPaid` / `REFUNDED` |
 | `account.*` | `users.airwallex.accountId` | Update `accountStatus` |
 | anything else | – | Store only |

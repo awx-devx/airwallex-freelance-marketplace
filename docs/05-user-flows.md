@@ -107,6 +107,8 @@ No Airwallex calls happen yet.
    - Offer → `ACTIVE`, `fundedAt`, activity `PAYMENT_SUCCEEDED` + `SPLITS_CREATED`.
 6. The return page shows "Payment received — $1,000 awaiting release" and links back to the offer.
 
+**Cancel checkout** (`POST /api/offers/:id/payments/cancel`) retrieves the PaymentIntent. If it is already `SUCCEEDED`, the offer is funded and not cancelled. Otherwise the server calls `POST /pa/payment_intents/{id}/cancel` (`request_id = picancel:{paymentId}`) and only then sets the payment to `CANCELLED` and the offer to `SENT`. A later confirmed success (webhook or sync) refunds the full PaymentIntent (`request_id = rf:cancel:{paymentId}`) and leaves the offer `SENT`. No splits are created for that capture.
+
 If the payment fails (`payment_intent.payment_failed` or a Drop-in `error`), the payment → `FAILED` and the offer → `SENT` so the buyer can retry.
 
 ### Wallet rail
@@ -179,7 +181,7 @@ Milestone → `CHANGES_REQUESTED`, review comment saved. The seller sees the com
 - **Unreleased totals** from our DB: "Held for you (incoming as seller): $X" and "Held from you (as buyer): $Y".
 - **Transactions** from `GET /balances/history` (on behalf of the user), shown with type, amount, and date. Map types like `TRANSFER`, `CHARGE`, `SPLIT`, `PAYOUT` to friendly labels.
 - **Airwallex account card:** `acct_...` ID, status, and a "View raw" toggle (demo transparency).
-- **Withdraw to bank:** `POST /api/wallet/withdrawals` creates a local USD transfer (`POST /api/v1/transfers/create`, `x-on-behalf-of` the user's CA) to a shared sandbox ACH beneficiary. The amount is checked against the available balance first.
+- **Withdraw to bank:** `POST /api/wallet/withdrawals` with `{ amount, idempotencyKey }` creates a local USD transfer (`POST /api/v1/transfers/create`, `x-on-behalf-of` the user's CA) to a shared sandbox ACH beneficiary. The amount is checked against the available balance first. The `request_id` is derived from the user and `idempotencyKey`, so a double click reuses it. `duplicate_request`, `duplicate_request_id`, `request_id_duplicate`, and `409 request_pending` recover the existing transfer instead of creating another. Sends use the same key for the charge, the onward transfer, and the return transfer.
 - **Send to user:** `POST /api/wallet/sends` charges the sender's CA, waits until that charge is `SETTLED`, then creates a CA transfer to the recipient. If the transfer fails, the same amount is transferred back to the sender. The recipient must be a ready user and cannot be the revenue account or the sender.
 
 ---

@@ -8,14 +8,19 @@ function duplicateKey(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && (error as { code: unknown }).code === 11000;
 }
 
+function allowTestSignatures(): boolean {
+  // DEMO-ONLY: Sandbox web-app test events are signed with the client-secret-key header, not the endpoint secret.
+  // PROD: Verify only with AIRWALLEX_WEBHOOK_SECRET. Never enable this flag on a public server.
+  if (process.env.NODE_ENV === "production") return false;
+  return process.env.AIRWALLEX_ALLOW_WEBHOOK_TEST_SIGNATURES?.trim() === "true";
+}
+
 function signatureOk(raw: string, request: Request): boolean {
   const timestamp = request.headers.get("x-timestamp");
   const signature = request.headers.get("x-signature");
   const secret = process.env.AIRWALLEX_WEBHOOK_SECRET?.trim();
   if (secret && verifyAirwallexSignature(raw, timestamp, signature, secret)) return true;
-  // DEMO-ONLY: Sandbox web-app test events are signed with the client-secret-key header, not the endpoint secret.
-  // PROD: Verify only with AIRWALLEX_WEBHOOK_SECRET.
-  if (process.env.NODE_ENV === "production") return false;
+  if (!allowTestSignatures()) return false;
   const testSecret = request.headers.get("client-secret-key");
   return Boolean(testSecret && verifyAirwallexSignature(raw, timestamp, signature, testSecret));
 }

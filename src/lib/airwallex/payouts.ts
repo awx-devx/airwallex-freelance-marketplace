@@ -1,5 +1,5 @@
-import { request } from "@/lib/airwallex/client";
-import type { JsonObject } from "@/lib/airwallex/json";
+import { createResource, request } from "@/lib/airwallex/client";
+import { asJsonObject, readItems, readString, type JsonObject } from "@/lib/airwallex/json";
 import { toAwxAmountString } from "@/lib/money";
 
 /**
@@ -31,6 +31,16 @@ export const SANDBOX_WITHDRAWAL_BENEFICIARY = {
   type: "BANK_ACCOUNT",
 } as const;
 
+async function findPayout(requestId: string, onBehalfOf: string): Promise<JsonObject | undefined> {
+  // AIRWALLEX: a reused request_id is recovered by listing transfers, the same way charges are.
+  // https://www.airwallex.com/docs/api/payouts/transfers/list
+  const listed = await request<unknown>("GET", "/api/v1/transfers", {
+    onBehalfOf,
+    query: { request_id: requestId, page_size: 10 },
+  });
+  return asJsonObject(readItems(listed).find((item) => readString(item, "request_id") === requestId));
+}
+
 export async function createPayoutTransfer(input: {
   requestId: string;
   amountMinor: number;
@@ -46,10 +56,9 @@ export async function createPayoutTransfer(input: {
     entity_type: SANDBOX_WITHDRAWAL_BENEFICIARY.entity_type,
     type: SANDBOX_WITHDRAWAL_BENEFICIARY.type,
   };
-  return request<JsonObject>("POST", "/api/v1/transfers/create", {
-    onBehalfOf: input.onBehalfOf,
-    relatedUserId: input.relatedUserId,
-    body: {
+  return createResource(
+    "/api/v1/transfers/create",
+    {
       beneficiary,
       transfer_amount: toAwxAmountString(input.amountMinor, input.currency),
       transfer_currency: input.currency,
@@ -59,5 +68,7 @@ export async function createPayoutTransfer(input: {
       reference: input.reference,
       request_id: input.requestId,
     },
-  });
+    () => findPayout(input.requestId, input.onBehalfOf),
+    { onBehalfOf: input.onBehalfOf, relatedUserId: input.relatedUserId },
+  );
 }

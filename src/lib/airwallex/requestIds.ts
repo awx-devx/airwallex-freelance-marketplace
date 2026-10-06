@@ -41,6 +41,11 @@ export function refundRequestId(milestoneId: string): string {
   return assertRequestId(`rf:${milestoneId}`);
 }
 
+/** Full refund of a PaymentIntent captured after the buyer cancelled checkout. */
+export function cancelledCheckoutRefundRequestId(paymentId: string): string {
+  return assertRequestId(`rf:cancel:${paymentId}`);
+}
+
 export function chargeRequestId(offerId: string): string {
   return assertRequestId(`ch:${offerId}`, SCALE_MAX);
 }

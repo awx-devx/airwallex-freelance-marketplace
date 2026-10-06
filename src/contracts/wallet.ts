@@ -52,14 +52,19 @@ export const TransactionsQuerySchema = z.object({
   cursor: z.string().min(1).optional(),
 });
 
+const amountField = z.string().regex(/^\d+(\.\d{1,2})?$/, "Enter a dollar amount with up to 2 decimal places.");
+const idempotencyKeyField = z.string().uuid();
+
 export const WithdrawalInputSchema = z.object({
-  amount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Enter a dollar amount with up to 2 decimal places."),
+  amount: amountField,
+  idempotencyKey: idempotencyKeyField,
 });
 export type WithdrawalInput = z.infer<typeof WithdrawalInputSchema>;
 
 export const SendFundsInputSchema = z.object({
   recipientId: z.string().min(1),
-  amount: z.string().regex(/^\d+(\.\d{1,2})?$/, "Enter a dollar amount with up to 2 decimal places."),
+  amount: amountField,
+  idempotencyKey: idempotencyKeyField,
 });
 export type SendFundsInput = z.infer<typeof SendFundsInputSchema>;
 

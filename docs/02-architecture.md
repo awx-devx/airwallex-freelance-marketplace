@@ -142,6 +142,7 @@ Principles:
 | `AIRWALLEX_CLIENT_ID` | from sandbox web app | `x-client-id` header for login. |
 | `AIRWALLEX_API_KEY` | from sandbox web app | `x-api-key` header for login. **Server only.** |
 | `AIRWALLEX_WEBHOOK_SECRET` | from sandbox web app webhook settings | HMAC key for `x-signature`. |
+| `AIRWALLEX_ALLOW_WEBHOOK_TEST_SIGNATURES` | unset | When `true`, and `NODE_ENV` is not `production`, also accept sandbox web-app test events signed with the `client-secret-key` header. Off by default. Ignored in production. |
 | `AIRWALLEX_PLATFORM_ACCOUNT_ID` | `acct_...` | Our platform account ID (for display and sanity checks). |
 | `NEXT_PUBLIC_AIRWALLEX_ENV` | `demo` | Airwallex.js `init({ env })`. `demo` = sandbox. |
 | `NEXT_PUBLIC_API_MOCKS` | `true` | UI uses the in-memory mock transport instead of `/api/*` (UI-first development). Refused in production builds unless `ALLOW_MOCKS_IN_PROD=true`. |

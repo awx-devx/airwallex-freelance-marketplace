@@ -17,7 +17,7 @@ import { approveMilestone, refundMilestone, type SplitGateway, type TransferGate
 import { payFromWallet, type CardGateway, type WalletGateway } from "@/services/funding";
 import { createAndSend, submitDelivery } from "@/services/offers";
 import { platformOverview } from "@/services/platform";
-import { dispatchWebhook } from "@/services/webhookHandlers";
+import { dispatchWebhook, type WebhookLookup } from "@/services/webhookHandlers";
 
 let mongo: MongoMemoryServer;
 
@@ -181,7 +181,15 @@ describe("wallet funding", () => {
     expect(gateway.created).toBe(1);
 
     const payment = await Payment.findOne({ offerId: offer.id });
-    await dispatchWebhook({ name: "charge.settled", data: { object: { id: payment?.chargeId } } });
+    const settled: WebhookLookup = {
+      async retrievePaymentIntent(id) {
+        return { id, status: "SUCCEEDED" };
+      },
+      async retrieveCharge(id) {
+        return { id, status: "SETTLED" };
+      },
+    };
+    await dispatchWebhook({ name: "charge.settled", data: { object: { id: payment?.chargeId } } }, undefined, settled);
     const funded = await Offer.findById(offer.id);
     expect(funded?.status).toBe("ACTIVE");
     expect(funded?.fundingRail).toBe("WALLET");

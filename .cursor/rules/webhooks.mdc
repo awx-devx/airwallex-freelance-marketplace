@@ -10,6 +10,8 @@ Full spec: `docs/07-webhooks.md`.
 
 - Route runs on the Node runtime: `export const runtime = 'nodejs'`.
 - Read the body with `await req.text()` and verify **before** parsing: HMAC-SHA256 hex of `x-timestamp + rawBody` using `AIRWALLEX_WEBHOOK_SECRET`, `crypto.timingSafeEqual`, and a 5-minute timestamp tolerance.
+- The `client-secret-key` test-signature fallback is off unless `AIRWALLEX_ALLOW_WEBHOOK_TEST_SIGNATURES=true`, and it is refused when `NODE_ENV` is production.
+- `payment_intent.succeeded` and `charge.settled` re-fetch the PaymentIntent or charge and change money state only when Airwallex reports `SUCCEEDED` or `SETTLED`.
 - Store every event in `webhook_events` (unique `eventId`). Duplicate → return 200 without reprocessing.
 - Return 200 once stored, even if processing fails. Record `processingError` so sync/retry can fix state.
 - Normalize payloads in one place: `data.object ?? data`, `account_id ?? accountId`.

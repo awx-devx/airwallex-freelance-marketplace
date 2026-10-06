@@ -75,11 +75,14 @@ function gateway(overrides: Partial<MovementGateway> = {}): MovementGateway & {
   };
 }
 
+const withdrawalKey = "11111111-1111-4111-8111-111111111111";
+const sendKey = "22222222-2222-4222-8222-222222222222";
+
 describe("withdrawToBank", () => {
   it("pays the sandbox bank from the user's connected account", async () => {
     const user = await readyUser("sam@example.com", "Sam Rivera");
     const fake = gateway();
-    const result = await withdrawToBank(user, { amount: "12.50" }, fake);
+    const result = await withdrawToBank(user, { amount: "12.50", idempotencyKey: withdrawalKey }, fake);
     expect(result).toEqual({ ok: true, transferId: "tr_1" });
     expect(fake.payouts[0]).toMatchObject({
       amountMinor: 1_250,
@@ -89,11 +92,38 @@ describe("withdrawToBank", () => {
       relatedUserId: user._id.toString(),
     });
     expect(fake.payouts[0]?.requestId.startsWith("wd:")).toBe(true);
+    expect(fake.payouts[0]?.requestId.length).toBeLessThanOrEqual(64);
+  });
+
+  it("reuses the request id when the same withdrawal is submitted twice", async () => {
+    const user = await readyUser("sam@example.com", "Sam Rivera");
+    const fake = gateway();
+    const input = { amount: "12.50", idempotencyKey: withdrawalKey };
+    await withdrawToBank(user, input, fake);
+    await withdrawToBank(user, input, fake);
+    expect(fake.payouts).toHaveLength(2);
+    expect(fake.payouts[0]?.requestId).toBe(fake.payouts[1]?.requestId);
+  });
+
+  it("reports an in-flight withdrawal instead of inventing a transfer id", async () => {
+    const user = await readyUser("sam@example.com", "Sam Rivera");
+    const fake = gateway({
+      createPayout: async (input) => {
+        fake.payouts.push(input);
+        return { status: "PENDING", request_id: input.requestId };
+      },
+    });
+    await expect(withdrawToBank(user, { amount: "12.50", idempotencyKey: withdrawalKey }, fake)).rejects.toBeInstanceOf(
+      InvalidState,
+    );
+    expect(fake.payouts).toHaveLength(1);
   });
 
   it("refuses a withdrawal above the available balance", async () => {
     const user = await readyUser("sam@example.com", "Sam Rivera");
-    await expect(withdrawToBank(user, { amount: "100.01" }, gateway())).rejects.toBeInstanceOf(InsufficientBalance);
+    await expect(withdrawToBank(user, { amount: "100.01", idempotencyKey: withdrawalKey }, gateway())).rejects.toBeInstanceOf(
+      InsufficientBalance,
+    );
   });
 });
 
@@ -102,7 +132,7 @@ describe("sendFunds", () => {
     const sender = await readyUser("sam@example.com", "Sam Rivera");
     const recipient = await readyUser("maya@example.com", "Maya Chen");
     const fake = gateway();
-    await expect(sendFunds(sender, { recipientId: recipient._id.toString(), amount: "20.00" }, fake)).resolves.toEqual({
+    await expect(sendFunds(sender, { recipientId: recipient._id.toString(), amount: "20.00", idempotencyKey: sendKey }, fake)).resolves.toEqual({
       ok: true,
     });
     expect(fake.charges[0]).toMatchObject({
@@ -120,6 +150,12 @@ describe("sendFunds", () => {
     ]);
     expect(fake.charges[0]?.requestId.startsWith("sch:")).toBe(true);
     expect(fake.transfers[0]?.requestId.startsWith("sxf:")).toBe(true);
+    expect(fake.charges[0]?.requestId.length).toBeLessThanOrEqual(50);
+
+    const again = gateway();
+    await sendFunds(sender, { recipientId: recipient._id.toString(), amount: "20.00", idempotencyKey: sendKey }, again);
+    expect(again.charges[0]?.requestId).toBe(fake.charges[0]?.requestId);
+    expect(again.transfers[0]?.requestId).toBe(fake.transfers[0]?.requestId);
   });
 
   it("waits for a pending charge to settle before transferring", async () => {
@@ -136,7 +172,7 @@ describe("sendFunds", () => {
         return { id: "ch_pending", status: "SETTLED" };
       },
     });
-    await sendFunds(sender, { recipientId: recipient._id.toString(), amount: "5.00" }, fake);
+    await sendFunds(sender, { recipientId: recipient._id.toString(), amount: "5.00", idempotencyKey: sendKey }, fake);
     expect(retrieves).toBe(1);
     expect(fake.transfers).toHaveLength(1);
   });
@@ -151,7 +187,7 @@ describe("sendFunds", () => {
         return { id: "cat_back", status: "SETTLED" };
       },
     });
-    await expect(sendFunds(sender, { recipientId: recipient._id.toString(), amount: "5.00" }, fake)).rejects.toThrow(
+    await expect(sendFunds(sender, { recipientId: recipient._id.toString(), amount: "5.00", idempotencyKey: sendKey }, fake)).rejects.toThrow(
       /returned to your wallet/,
     );
     expect(fake.transfers.map((item) => item.destination)).toEqual(["acct_maya@example.com", "acct_sam@example.com"]);
@@ -166,7 +202,7 @@ describe("sendFunds", () => {
         throw new Error("down");
       },
     });
-    await expect(sendFunds(sender, { recipientId: recipient._id.toString(), amount: "5.00" }, fake)).rejects.toThrow(
+    await expect(sendFunds(sender, { recipientId: recipient._id.toString(), amount: "5.00", idempotencyKey: sendKey }, fake)).rejects.toThrow(
       /platform account/,
     );
   });
@@ -175,15 +211,15 @@ describe("sendFunds", () => {
     const sender = await readyUser("sam@example.com", "Sam Rivera");
     const revenue = await readyUser("revenue@example.com", "Platform Revenue", "REVENUE");
     const fake = gateway();
-    await expect(sendFunds(sender, { recipientId: sender._id.toString(), amount: "5.00" }, fake)).rejects.toBeInstanceOf(
+    await expect(sendFunds(sender, { recipientId: sender._id.toString(), amount: "5.00", idempotencyKey: sendKey }, fake)).rejects.toBeInstanceOf(
       InvalidState,
     );
-    await expect(sendFunds(sender, { recipientId: revenue._id.toString(), amount: "5.00" }, fake)).rejects.toBeInstanceOf(
+    await expect(sendFunds(sender, { recipientId: revenue._id.toString(), amount: "5.00", idempotencyKey: sendKey }, fake)).rejects.toBeInstanceOf(
       NotFound,
     );
-    await expect(sendFunds(sender, { recipientId: "not-an-id", amount: "5.00" }, fake)).rejects.toBeInstanceOf(NotFound);
+    await expect(sendFunds(sender, { recipientId: "not-an-id", amount: "5.00", idempotencyKey: sendKey }, fake)).rejects.toBeInstanceOf(NotFound);
     await expect(
-      sendFunds(sender, { recipientId: (await readyUser("maya@example.com", "Maya Chen"))._id.toString(), amount: "500.00" }, fake),
+      sendFunds(sender, { recipientId: (await readyUser("maya@example.com", "Maya Chen"))._id.toString(), amount: "500.00", idempotencyKey: sendKey }, fake),
     ).rejects.toBeInstanceOf(InsufficientBalance);
     expect(fake.charges).toHaveLength(0);
   });
@@ -194,7 +230,7 @@ describe("sendFunds", () => {
     const fake = gateway({
       createCharge: async () => ({ id: "ch_bad", status: "FAILED" }),
     });
-    await expect(sendFunds(sender, { recipientId: recipient._id.toString(), amount: "5.00" }, fake)).rejects.toBeInstanceOf(
+    await expect(sendFunds(sender, { recipientId: recipient._id.toString(), amount: "5.00", idempotencyKey: sendKey }, fake)).rejects.toBeInstanceOf(
       InvalidState,
     );
     expect(fake.transfers).toHaveLength(0);

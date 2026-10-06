@@ -25,19 +25,19 @@ Next.js App Router, MongoDB via Mongoose, Tailwind CSS and shadcn/ui. Airwallex 
 Replit imports this repo and publishes the Next.js server. MongoDB stays on Atlas. Full sandbox setup and troubleshooting are in [docs/11-setup-and-runbook.md](docs/11-setup-and-runbook.md).
 
 1. Create a MongoDB Atlas cluster. Allow Replit’s egress (`0.0.0.0/0` is the usual sandbox choice) and copy `MONGODB_URI`.
-2. Import the repo: [replit.com/github/awx-devx/airwallex-freelance-escrow](https://replit.com/github/awx-devx/airwallex-freelance-escrow).
+2. Import the repo: [replit.com/github/awx-devx/airwallex-freelance-marketplace](https://replit.com/github/awx-devx/airwallex-freelance-marketplace).
 3. Set secrets in **both** the workspace Secrets tool and the deployment’s Secrets. Workspace secrets are not copied into a deployment. `NEXT_PUBLIC_*` must be present at build time.
-4. For a real demo set `NEXT_PUBLIC_API_MOCKS=false`, `NEXT_PUBLIC_AIRWALLEX_ENV=demo`, `APP_URL=https://<slug>.replit.app`, plus `MONGODB_URI`, a `SESSION_SECRET` of 32+ characters, and the Airwallex keys from [`.env.example`](.env.example).
+4. For a real demo set `NEXT_PUBLIC_API_MOCKS=false`, `NEXT_PUBLIC_AIRWALLEX_ENV=demo`, `APP_URL=https://<slug>.replit.app`, plus `MONGODB_URI`, a `SESSION_SECRET` of 32+ characters, `DEMO_ADMIN_KEY`, and the Airwallex keys from [`.env.example`](.env.example). A public deploy must set `DEMO_ADMIN_KEY`. When it is empty, `/platform` is open to any signed-in user.
 5. Publish. Autoscale (the `.replit` default) can scale to zero and miss a webhook on a cold start. Choose a **Reserved VM** if webhooks must land while the app is idle. The in-app Sync action recovers a missed webhook.
 6. In the Airwallex sandbox, set the webhook URL to `https://<slug>.replit.app/api/webhooks/airwallex`. Use the published host, not the `*.replit.dev` editor URL.
 7. Seed from your machine, not inside Replit. Point `.env.local` at the same Atlas URI and run `npm run seed`.
 
 ## Run locally
 
-Node 20 or newer, and a MongoDB (local or Atlas).
+Node 22.22 or newer, or Node 24.15 or newer. The UI runs on in-memory mocks by default (`NEXT_PUBLIC_API_MOCKS=true` in [`.env.example`](.env.example)), so `npm run dev` needs no MongoDB and no Airwallex keys. Set `NEXT_PUBLIC_API_MOCKS=false` when you want the real API, and then fill in Mongo and Airwallex values.
 
 ```bash
-cp .env.example .env.local   # fill in Mongo and Airwallex values
+cp .env.example .env.local   # mocks are already on; fill in Mongo and Airwallex only for a real demo
 npm install
 npm run dev                  # http://localhost:3000
 ```

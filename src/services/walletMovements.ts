@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { Types } from "mongoose";
 import { OkSchema, type OkDTO } from "@/contracts/common";
 import { WithdrawalResultSchema, type SendFundsInput, type WithdrawalInput, type WithdrawalResult } from "@/contracts/wallet";
@@ -49,8 +49,8 @@ const liveGateway: MovementGateway = {
   wait: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 };
 
-function movementNonce(): string {
-  return randomUUID().replaceAll("-", "");
+function movementNonce(userId: string, idempotencyKey: string): string {
+  return createHash("sha256").update(`${userId}:${idempotencyKey}`).digest("hex").slice(0, 32);
 }
 
 function requireAccount(user: UserDocument): string {
@@ -86,7 +86,7 @@ export async function withdrawToBank(
   }
 
   const created = await gateway.createPayout({
-    requestId: withdrawalRequestId(movementNonce()),
+    requestId: withdrawalRequestId(movementNonce(user._id.toString(), input.idempotencyKey)),
     amountMinor,
     currency,
     onBehalfOf: accountId,
@@ -94,7 +94,12 @@ export async function withdrawToBank(
     relatedUserId: user._id.toString(),
   });
   const transferId = readString(created, "id");
-  if (!transferId) throw new Error("Airwallex did not return a transfer.");
+  if (!transferId) {
+    if (readString(created, "status") === "PENDING") {
+      throw new InvalidState("That withdrawal is already in progress.");
+    }
+    throw new Error("Airwallex did not return a transfer.");
+  }
   return WithdrawalResultSchema.parse({ ok: true, transferId });
 }
 
@@ -137,7 +142,7 @@ export async function sendFunds(
     throw new InsufficientBalance("Wallet balance is too low.");
   }
 
-  const nonce = movementNonce();
+  const nonce = movementNonce(user._id.toString(), input.idempotencyKey);
   const reference = `Send to ${recipient.name}`.slice(0, 140);
   const created = await gateway.createCharge({
     amountMinor,
@@ -147,6 +152,9 @@ export async function sendFunds(
     reason: SEND_REASON,
     reference,
   });
+  if (!readString(created, "id") && readString(created, "status") === "PENDING") {
+    throw new InvalidState("That send is already in progress.");
+  }
   await settledCharge(created, gateway);
 
   try {

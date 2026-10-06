@@ -64,7 +64,7 @@ rg -n "SANDBOX:" src scripts
 | **Currency** | Single currency (`USD`) | Multi-currency pricing, FX (Conversions API), currency-precision handling |
 | **Amount limits** | Min $10 per milestone; sandbox transaction limit is ~10,000 | Business rules plus Airwallex account limits |
 | **Webhook processing** | Processed inline in the request; always returns 200 | Ack fast, enqueue, process async with retries; alert on failures |
-| **Webhook test signatures** | Accepts `client-secret-key` header for web-app test events (non-prod only), including `src/app/api/webhooks/airwallex/route.ts` and `scripts/spike/08-webhooks.ts` | Never |
+| **Webhook test signatures** | Accepts the `client-secret-key` header for web-app test events only when `AIRWALLEX_ALLOW_WEBHOOK_TEST_SIGNATURES=true` and `NODE_ENV` is not production (`src/app/api/webhooks/airwallex/route.ts`). Off by default. The local spike listener (`scripts/spike/08-webhooks.ts`) still accepts that header because it is not the deployed route | Never |
 | **Sync endpoint** | Any participant can force-sync from Airwallex; UI polls it | Keep as an internal reconciliation job, not user-triggered |
 | **`/platform` page** | Open to any logged-in user when `DEMO_ADMIN_KEY` is unset. When it is set, the page and `GET /api/platform/overview` / `webhooks` require that key via `POST /api/platform/unlock` (`src/lib/demoAdmin.ts`, `src/components/screens/platform-gate.tsx`). Mock mode skips the lock. | Proper admin RBAC and audit logs |
 | **Token cache** | In-memory per server instance (`src/lib/airwallex/client.ts`) | Shared cache with a single-flight refresh; respect login rate limits |
@@ -79,6 +79,14 @@ rg -n "SANDBOX:" src scripts
 | **Seed/reset scripts** | Move sandbox money, create accounts, wipe DB (`scripts/seed.ts`, `scripts/reset.ts`) | Not present in production builds |
 | **Compliance** | None (no sanctions screening UI, no tax forms, no ToS) | Platform ToS, seller agreements, tax forms (for example the Embedded Tax Form component), transaction monitoring response (RFIs) |
 | **Secrets** | `.env.local` | Secret manager, key rotation, scoped/restricted API keys ([API key best practices](https://www.airwallex.com/docs/developer-tools/api/api-key-best-practices.md)) |
+
+## Known limits
+
+These are real gaps in the demo, not just missing polish.
+
+- **Refunding a held milestone.** Funds Split reversal of a `CREATED` split, or of a `RELEASED` split that has not settled, returns insufficient funds while the destination balance is `0`. The split stays `CREATED`. The buyer refund on the PaymentIntent still goes out. A dangling `CREATED` split can settle later and pay the seller for a milestone that was refunded. See R7 in [13](./13-open-questions-and-risks.md) and the refund row above.
+- **No dispute or expiry handling.** `payment_dispute.*` is ignored. Nothing auto-approves or expires a hold. Funds stay held until a person acts.
+- **The 2% processing reserve stays with the platform.** It is not split to the seller or the Revenue account. It sits on the platform balance to absorb Airwallex fees, and this demo does not reconcile it against settlement reports.
 
 ## Things that are production-grade on purpose
 

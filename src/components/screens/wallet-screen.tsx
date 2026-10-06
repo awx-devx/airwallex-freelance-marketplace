@@ -91,6 +91,8 @@ export function WalletScreen() {
   const send = useSendFunds();
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [sendOpen, setSendOpen] = useState(false);
+  const [withdrawKey, setWithdrawKey] = useState(() => crypto.randomUUID());
+  const [sendKey, setSendKey] = useState(() => crypto.randomUUID());
   const [recipient, setRecipient] = useState<UserSummaryDTO | undefined>();
 
   if (wallet.isLoading) {
@@ -122,10 +124,24 @@ export function WalletScreen() {
         subtitle="Sandbox balance on your Airwallex connected account."
         actions={
           <>
-            <Button type="button" variant="outline" onClick={() => setWithdrawOpen(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setWithdrawKey(crypto.randomUUID());
+                setWithdrawOpen(true);
+              }}
+            >
               Withdraw
             </Button>
-            <Button type="button" variant="primary" onClick={() => setSendOpen(true)}>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                setSendKey(crypto.randomUUID());
+                setSendOpen(true);
+              }}
+            >
               Send
             </Button>
           </>
@@ -171,7 +187,9 @@ export function WalletScreen() {
         pending={withdraw.isPending}
         error={withdraw.error instanceof ApiError ? withdraw.error.message : undefined}
         onOpenChange={setWithdrawOpen}
-        onConfirm={(amount) => withdraw.mutate({ amount }, { onSuccess: () => setWithdrawOpen(false) })}
+        onConfirm={(amount) =>
+          withdraw.mutate({ amount, idempotencyKey: withdrawKey }, { onSuccess: () => setWithdrawOpen(false) })
+        }
       />
       <AmountDialog
         open={sendOpen}
@@ -190,7 +208,10 @@ export function WalletScreen() {
         onOpenChange={setSendOpen}
         onConfirm={(amount) => {
           if (!recipient) return;
-          send.mutate({ recipientId: recipient.id, amount }, { onSuccess: () => setSendOpen(false) });
+          send.mutate(
+            { recipientId: recipient.id, amount, idempotencyKey: sendKey },
+            { onSuccess: () => setSendOpen(false) },
+          );
         }}
       />
     </div>

@@ -225,7 +225,7 @@ stateDiagram-v2
   CANCELLED --> [*]
 ```
 
-There's no `DRAFT` state: offers are created and sent in one step (demo simplicity). `AWAITING_PAYMENT` → `SENT` happens when the buyer abandons checkout (a "Cancel" button, or on the next visit if the PI is still unpaid) or on `payment_intent.payment_failed`.
+There's no `DRAFT` state: offers are created and sent in one step (demo simplicity). `AWAITING_PAYMENT` → `SENT` happens when the buyer abandons checkout (a "Cancel" button, which also cancels the PaymentIntent, or on the next visit if the PI is still unpaid) or on `payment_intent.payment_failed`. If Airwallex reports the cancelled intent as `SUCCEEDED` later, the full amount is refunded and the offer stays `SENT`.
 
 ### Milestone
 

@@ -19,7 +19,7 @@
 ## 2. Local setup
 
 ```bash
-# prerequisites: Node 20+, a MongoDB (local or Atlas)
+# prerequisites: Node 22.22+ or 24.15+, a MongoDB (local or Atlas) for a real demo
 cp .env.example .env.local        # fill in Airwallex + Mongo values
 npm install
 npm run spike:all                 # B0 sandbox checks (see 12-implementation-plan.md)
@@ -61,13 +61,14 @@ Without a tunnel, the app falls back to polling via the sync endpoint.
 The repo includes a [`.replit`](../.replit) file. Replit imports the GitHub repo and runs `npm run build`, then `npm run start` on `0.0.0.0` and `PORT` (mapped from local 3000 to external 80). Mongo stays on **MongoDB Atlas**. Replit has no MongoDB.
 
 1. **Atlas.** Create a cluster and a database user. Set `MONGODB_URI` to that connection string. Allow Replit’s egress in Atlas Network Access (`0.0.0.0/0` is the usual sandbox choice).
-2. **Import.** Open `https://replit.com/github/awx-devx/airwallex-freelance-escrow`, or use [replit.com/import](https://replit.com/import) and choose the GitHub repo.
+2. **Import.** Open `https://replit.com/github/awx-devx/airwallex-freelance-marketplace`, or use [replit.com/import](https://replit.com/import) and choose the GitHub repo.
 3. **Secrets, in two places.** Add every variable in the workspace **Secrets** tool and again under the deployment’s **Secrets**. Workspace secrets are not copied into a deployment. `NEXT_PUBLIC_*` must be set before the deployment **build**; Next inlines them at build time. Boot fails without `MONGODB_URI` and a `SESSION_SECRET` of 32+ characters.
 4. **Values for a real demo.**
    - `NEXT_PUBLIC_API_MOCKS=false` (a production build refuses mocks unless `ALLOW_MOCKS_IN_PROD=true`)
    - `NEXT_PUBLIC_AIRWALLEX_ENV=demo`
    - `APP_URL=https://<slug>.replit.app` (the published host, no trailing slash)
    - `AIRWALLEX_API_BASE=https://api.sandbox.airwallex.com` plus `AIRWALLEX_CLIENT_ID`, `AIRWALLEX_API_KEY`, `AIRWALLEX_WEBHOOK_SECRET`, and `AIRWALLEX_PLATFORM_ACCOUNT_ID` from [§1](#1-airwallex-sandbox-setup-one-time)
+   - `DEMO_ADMIN_KEY` set to a secret. A public deploy must set it. When it is empty, `/platform` and `GET /api/platform/*` are open to any signed-in user.
    - The remaining demo keys in [`.env.example`](../.env.example) can stay at their defaults
 5. **Publish.** The file defaults to Autoscale (`cloudrun`), which can scale to zero and drop a webhook during a cold start. Choose a **Reserved VM** when you publish if webhooks must land while the app is idle. The in-app **Sync** action still recovers a missed webhook.
 6. **Webhook.** In the Airwallex sandbox, set the webhook URL to `https://<slug>.replit.app/api/webhooks/airwallex`. Use the published host, not the `*.replit.dev` editor URL. Subscribe to the events in [07-webhooks.md](./07-webhooks.md#subscriptions).

@@ -352,7 +352,7 @@ type CreateOfferInput = {
 | --- | --- | --- | --- |
 | POST | `/api/offers/:id/payments/card` | – | `CardPaymentSessionDTO` (creates or reuses PI; offer → `AWAITING_PAYMENT`) |
 | POST | `/api/offers/:id/payments/reconcile` | – | `OfferDTO` (retrieves PI; creates unreleased splits if succeeded) |
-| POST | `/api/offers/:id/payments/cancel` | – | `OfferDTO` (back to `SENT`) |
+| POST | `/api/offers/:id/payments/cancel` | – | `OfferDTO`. Cancels the PaymentIntent, then the offer goes back to `SENT`. If the intent already succeeded, the offer is funded instead. A capture that arrives after cancel is refunded in full and the offer stays `SENT`. |
 | POST | `/api/offers/:id/payments/wallet` | – | `OfferDTO` (`AWAITING_PAYMENT`; errors `INSUFFICIENT_BALANCE`) |
 
 ### Wallet
@@ -361,8 +361,8 @@ type CreateOfferInput = {
 | --- | --- | --- | --- |
 | GET | `/api/wallet` | – | `WalletDTO` |
 | GET | `/api/wallet/transactions` | `?cursor=` | `Page<TransactionDTO>` |
-| POST | `/api/wallet/withdrawals` | `{ amount: string }` | `{ ok: true, transferId: string }` |
-| POST | `/api/wallet/sends` | `{ recipientId: string, amount: string }` | `{ ok: true }` |
+| POST | `/api/wallet/withdrawals` | `{ amount: string, idempotencyKey: uuid }` | `{ ok: true, transferId: string }` |
+| POST | `/api/wallet/sends` | `{ recipientId: string, amount: string, idempotencyKey: uuid }` | `{ ok: true }` |
 
 ### Platform (demo-only)
 

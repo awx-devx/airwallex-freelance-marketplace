@@ -1,10 +1,19 @@
-import { readString } from "@/lib/airwallex/json";
+import { readString, type JsonObject } from "@/lib/airwallex/json";
+import { retrievePaymentIntent } from "@/lib/airwallex/payments";
+import { retrieveCharge } from "@/lib/airwallex/wallet";
 import { extractAccountId, extractObject } from "@/lib/airwallex/webhooks";
 import { connectDb } from "@/lib/db";
 import { Payment } from "@/models/payment";
 import { User } from "@/models/user";
 import { advanceRefundStatus, advanceSplitStatus, advanceTransferStatus, markCardPaymentFailed, onFundingSucceeded, type SplitGateway } from "@/services/release";
-import { markWalletChargeFailed } from "@/services/funding";
+import { markWalletChargeFailed, onConfirmedCardIntent, type CardRefundGateway } from "@/services/funding";
+
+export type WebhookLookup = {
+  retrievePaymentIntent: (paymentIntentId: string) => Promise<JsonObject>;
+  retrieveCharge: (chargeId: string) => Promise<JsonObject>;
+};
+
+const liveLookup: WebhookLookup = { retrievePaymentIntent, retrieveCharge };
 
 const ACCOUNT_STATUS = {
   "account.active": "ACTIVE",
@@ -48,7 +57,12 @@ function transferStatusFromName(name: string): string | undefined {
 }
 
 /** Apply one stored Airwallex event. Returns the offer id when the event belongs to one. */
-export async function dispatchWebhook(event: unknown, splits?: SplitGateway): Promise<string | undefined> {
+export async function dispatchWebhook(
+  event: unknown,
+  splits?: SplitGateway,
+  lookup: WebhookLookup = liveLookup,
+  refunds?: CardRefundGateway,
+): Promise<string | undefined> {
   await connectDb();
   if (!event || typeof event !== "object") return undefined;
   const name = readString(event, "name") ?? "";
@@ -57,9 +71,10 @@ export async function dispatchWebhook(event: unknown, splits?: SplitGateway): Pr
   const offerId = metaString(object, "offerId");
 
   if (name === "payment_intent.succeeded") {
-    const id = offerId ?? (await paymentOfferId(objectId));
-    if (id) await onFundingSucceeded(id, splits);
-    return id;
+    if (!objectId) return offerId;
+    const retrieved = await lookup.retrievePaymentIntent(objectId);
+    if (readString(retrieved, "status") !== "SUCCEEDED") return offerId ?? (await paymentOfferId(objectId));
+    return onConfirmedCardIntent(objectId, splits, refunds);
   }
 
   if (name === "payment_intent.payment_failed" || name === "payment_intent.cancelled") {
@@ -88,6 +103,10 @@ export async function dispatchWebhook(event: unknown, splits?: SplitGateway): Pr
   if (name === "charge.settled" || name === "charge.failed" || name === "charge.suspended") {
     if (!objectId) return offerId;
     if (name === "charge.settled") {
+      const retrieved = await lookup.retrieveCharge(objectId);
+      if (readString(retrieved, "status") !== "SETTLED") {
+        return (await Payment.findOne({ chargeId: objectId }))?.offerId.toString() ?? offerId;
+      }
       const payment = await Payment.findOne({ chargeId: objectId });
       if (payment) await onFundingSucceeded(payment.offerId.toString(), splits);
       return payment?.offerId.toString() ?? offerId;

@@ -12,7 +12,7 @@ Endpoint reference: `docs/03-airwallex-integration.md` §9. Don't invent endpoin
 - Base URL comes from `AIRWALLEX_API_BASE` (sandbox: `https://api.sandbox.airwallex.com`).
 - Auth: `POST /api/v1/authentication/login` with `x-client-id` + `x-api-key`. Cache the token and refresh from `expires_at` (minus skew). On 401, re-login once and retry once.
 - Acting for a CA (balances, history, payouts): pass `onBehalfOf` → `x-on-behalf-of` header. PaymentIntents use body `connected_account_id` instead (collect-directly model).
-- `request_id`: always from `requestIds.ts` builders (for example `fs:{milestoneId}:seller`, max 64 chars). Treat `duplicate_request` as success and retrieve the existing object. A connected-account transfer that says the `request_id` has been used in the past is the same case.
+- `request_id`: always from `requestIds.ts` builders (for example `fs:{milestoneId}:seller`, max 64 chars). Treat `duplicate_request`, `duplicate_request_id`, `request_id_duplicate`, and HTTP 409 `request_pending` as the same in-flight or existing call and retrieve the object. A connected-account transfer that says the `request_id` has been used in the past is the same case.
 - Amounts: decimal major units (`"90.00"`), converted via `toAwxAmount()`. Never multiply by 100.
 - Errors: throw `AirwallexError { status, code, message, traceId }`; callers branch on `code`.
 - Every call is logged to `airwallex_logs` with `relatedOfferId`/`relatedMilestoneId` when known. Redact `client_secret` and keys.

@@ -4,7 +4,8 @@ import { CardPaymentSessionSchema } from "@/contracts/payments";
 import { offerActions } from "@/contracts/permissions";
 import { readString, type JsonObject } from "@/lib/airwallex/json";
 import { cancelPaymentIntent, createPaymentIntent, retrievePaymentIntent, type CreatePaymentIntentInput } from "@/lib/airwallex/payments";
-import { chargeRequestId, paymentIntentCancelRequestId, paymentIntentRequestId } from "@/lib/airwallex/requestIds";
+import { createRefund, type CreateRefundInput } from "@/lib/airwallex/refunds";
+import { cancelledCheckoutRefundRequestId, chargeRequestId, paymentIntentCancelRequestId, paymentIntentRequestId } from "@/lib/airwallex/requestIds";
 import { createCharge, currentBalances, retrieveCharge } from "@/lib/airwallex/wallet";
 import { getServerConfig } from "@/lib/config";
 import { connectDb } from "@/lib/db";
@@ -32,6 +33,12 @@ const liveCards: CardGateway = {
   cancelPaymentIntent: (paymentIntentId, requestId, relatedOfferId) =>
     cancelPaymentIntent({ paymentIntentId, requestId, relatedOfferId }),
 };
+
+export type CardRefundGateway = {
+  createRefund: (input: CreateRefundInput) => Promise<JsonObject>;
+};
+
+const liveCardRefunds: CardRefundGateway = { createRefund };
 
 export type WalletGateway = {
   currentBalances: typeof currentBalances;
@@ -146,20 +153,33 @@ export async function startCardPayment(
   return session(waiting, payment);
 }
 
-export async function reconcileCardPayment(user: UserDocument, offerId: string, gateway: CardGateway = liveCards, splits?: SplitGateway) {
+export async function reconcileCardPayment(
+  user: UserDocument,
+  offerId: string,
+  gateway: CardGateway = liveCards,
+  splits?: SplitGateway,
+  refunds: CardRefundGateway = liveCardRefunds,
+) {
   const offer = await loadOffer(offerId, user._id.toString());
   if (!isBuyer(offer, user._id.toString())) throw new Forbidden("You're not part of this offer.");
-  await applyCardStatus(offer, gateway, splits);
+  await applyCardStatus(offer, gateway, splits, refunds);
   return getOffer(user, offerId);
 }
 
-export async function cancelCardPayment(user: UserDocument, offerId: string) {
+export async function cancelCardPayment(
+  user: UserDocument,
+  offerId: string,
+  gateway: CardGateway = liveCards,
+  splits?: SplitGateway,
+) {
   const offer = await loadOffer(offerId, user._id.toString());
   if (!isBuyer(offer, user._id.toString()) || !offerActions(offer, "BUYER").includes("CANCEL_PAYMENT")) {
     throw new InvalidState("That action isn't available.");
   }
   const pending = await Payment.findOne({ offerId: offer._id, rail: "CARD", status: "PENDING" }).sort({ attempt: -1 });
-  if (pending) {
+  if (pending?.paymentIntentId) {
+    const outcome = await releaseOrCancelIntent(offer._id.toString(), pending, gateway, splits);
+    if (outcome === "funded") return getOffer(user, offerId);
     await Payment.updateOne({ _id: pending._id, status: "PENDING" }, { $set: { status: "CANCELLED" } });
   }
   const updated = await Offer.findOneAndUpdate(
@@ -184,9 +204,10 @@ export async function syncOffer(
   splits?: SplitGateway,
   wallet: WalletGateway = liveWallet,
   transfers?: TransferGateway,
+  refunds: CardRefundGateway = liveCardRefunds,
 ) {
   const offer = await loadOffer(offerId, user._id.toString());
-  await applyCardStatus(offer, gateway, splits);
+  await applyCardStatus(offer, gateway, splits, refunds);
   await refreshSplits(offer._id.toString(), splits);
   await refreshRefunds(offer._id.toString());
   await refreshWalletFunding(offer._id.toString(), wallet);
@@ -194,22 +215,107 @@ export async function syncOffer(
   return getOffer(user, offerId);
 }
 
-async function applyCardStatus(offer: OfferDocument, gateway: CardGateway, splits?: SplitGateway): Promise<void> {
+async function applyCardStatus(
+  offer: OfferDocument,
+  gateway: CardGateway,
+  splits?: SplitGateway,
+  refunds: CardRefundGateway = liveCardRefunds,
+): Promise<void> {
   const payment = await Payment.findOne({ offerId: offer._id, rail: "CARD" }).sort({ attempt: -1 });
-  if (!payment?.paymentIntentId || payment.status === "CANCELLED") return;
+  if (!payment?.paymentIntentId) return;
   if (payment.status === "SUCCEEDED") {
     await onFundingSucceeded(offer._id.toString(), splits);
     return;
   }
+  if (payment.status === "CANCELLED" && payment.refundedMinor >= payment.amountMinor) return;
   const retrieved = await gateway.retrievePaymentIntent(payment.paymentIntentId);
   const status = readString(retrieved, "status") ?? "";
   if (status === "SUCCEEDED") {
-    await onFundingSucceeded(offer._id.toString(), splits);
+    await onConfirmedCardIntent(payment.paymentIntentId, splits, refunds);
     return;
   }
+  if (payment.status === "CANCELLED") return;
   if (status === "FAILED" || status === "CANCELLED") {
     await markCardPaymentFailed(payment.paymentIntentId, status);
   }
+}
+
+/**
+ * A PaymentIntent Airwallex reports as SUCCEEDED. Fund the offer while checkout is still open.
+ * Refund the full amount when the buyer already cancelled, so a late capture does not sit unallocated.
+ */
+export async function onConfirmedCardIntent(
+  paymentIntentId: string,
+  splits?: SplitGateway,
+  refunds: CardRefundGateway = liveCardRefunds,
+): Promise<string | undefined> {
+  await connectDb();
+  const payment = await Payment.findOne({ paymentIntentId });
+  if (!payment) return undefined;
+  const offer = await Offer.findById(payment.offerId);
+  const offerId = payment.offerId.toString();
+  if (!offer || offer.status === "COMPLETED" || offer.status === "CANCELLED") return offerId;
+  const abandoned =
+    payment.status === "CANCELLED" || offer.status === "SENT" || offer.status === "DECLINED" || offer.status === "WITHDRAWN";
+  if (abandoned) {
+    await refundCancelledCardCapture(payment, refunds);
+    return offerId;
+  }
+  await onFundingSucceeded(offerId, splits);
+  return offerId;
+}
+
+async function releaseOrCancelIntent(
+  offerId: string,
+  pending: PaymentDocument,
+  gateway: CardGateway,
+  splits?: SplitGateway,
+): Promise<"funded" | "cancelled"> {
+  if (!pending.paymentIntentId) return "cancelled";
+  const retrieved = await gateway.retrievePaymentIntent(pending.paymentIntentId);
+  const status = readString(retrieved, "status") ?? "";
+  if (status === "SUCCEEDED") {
+    await onFundingSucceeded(offerId, splits);
+    return "funded";
+  }
+  if (status !== "" && !PAYABLE.has(status)) return "cancelled";
+  try {
+    await gateway.cancelPaymentIntent(
+      pending.paymentIntentId,
+      paymentIntentCancelRequestId(pending._id.toString()),
+      offerId,
+    );
+  } catch (error) {
+    const again = await gateway.retrievePaymentIntent(pending.paymentIntentId);
+    if (readString(again, "status") === "SUCCEEDED") {
+      await onFundingSucceeded(offerId, splits);
+      return "funded";
+    }
+    throw error;
+  }
+  return "cancelled";
+}
+
+async function refundCancelledCardCapture(payment: PaymentDocument, refunds: CardRefundGateway): Promise<void> {
+  if (!payment.paymentIntentId || payment.refundedMinor >= payment.amountMinor) return;
+  const created = await refunds.createRefund({
+    paymentIntentId: payment.paymentIntentId,
+    amountMinor: payment.amountMinor,
+    currency: payment.currency,
+    requestId: cancelledCheckoutRefundRequestId(payment._id.toString()),
+    reason: "Checkout cancelled",
+    metadata: { offerId: payment.offerId.toString() },
+  });
+  if (!readString(created, "id")) throw new Error("Refund did not return an id.");
+  await Payment.updateOne(
+    { _id: payment._id, refundedMinor: { $lt: payment.amountMinor } },
+    { $set: { status: "CANCELLED", refundedMinor: payment.amountMinor } },
+  );
+  await Activity.create({
+    offerId: payment.offerId,
+    type: "PAYMENT_REFUNDED",
+    message: "Card payment was refunded because checkout was cancelled",
+  });
 }
 
 async function pendingCardIntent(offer: OfferDocument, cards: CardGateway, splits?: SplitGateway): Promise<"none" | "funded" | "payable"> {

@@ -1,5 +1,5 @@
 import { airwallexContext } from "./context";
-import { AirwallexError, isDuplicateRequest } from "./errors";
+import { AirwallexError, isDuplicateRequest, isRequestPending } from "./errors";
 import { loadAirwallexEnv, type AirwallexConfig } from "./env";
 import { asObject, readString, type JsonObject } from "./json";
 import { redact } from "./redact";
@@ -290,6 +290,10 @@ export async function createResource(
       if (existing) return existing;
     } catch {
       // Keep the original duplicate_request error if lookup fails.
+    }
+    if (isRequestPending(error)) {
+      const requestId = readString(body, "request_id");
+      return { ...(requestId ? { request_id: requestId } : {}), status: "PENDING" };
     }
     throw error;
   }

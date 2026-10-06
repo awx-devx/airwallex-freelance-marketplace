@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  cancelledCheckoutRefundRequestId,
   chargeRequestId,
   paymentIntentCancelRequestId,
   paymentIntentRequestId,
@@ -33,6 +34,8 @@ describe("request ids", () => {
     expect(releaseSplitRequestId(splitId)).toBe(`fsr:${splitId}`);
     expect(reverseSplitRequestId(splitId)).toBe(`fsrev:${splitId}`);
     expect(refundRequestId(milestoneId)).toBe(`rf:${milestoneId}`);
+    expect(cancelledCheckoutRefundRequestId(offerId)).toBe(`rf:cancel:${offerId}`);
+    expect(cancelledCheckoutRefundRequestId(offerId).length).toBeLessThanOrEqual(64);
     expect(chargeRequestId(offerId)).toBe(`ch:${offerId}`);
     expect(sellerTransferRequestId(milestoneId)).toBe(`cat:${milestoneId}:seller`);
     expect(revenueTransferRequestId(milestoneId)).toBe(`cat:${milestoneId}:rev`);
